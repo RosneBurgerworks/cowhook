@@ -1,0 +1,24 @@
+[submodule "external/MicroPather"]
+	path = external/MicroPather
+	url = https://github.com/explowz/MicroPather.git
+[submodule "external/libglez"]
+	path = external/libglez
+	url = https://github.com/RosneBurgerworks/libglez
+[submodule "external/simple-ipc"]
+	path = external/simple-ipc
+	url = https://github.com/RosneBurgerworks/simple-ipc.git
+[submodule "external/clip"]
+	path = external/clip
+	url = https://github.com/nullworks/clip.git
+[submodule "external/source-sdk-2013-headers"]
+	path = external/source-sdk-2013-headers
+	url = https://github.com/RosneBurgerworks/source-sdk-2013-headers.git
+[submodule "external/libxoverlay"]
+	path = external/libxoverlay
+	url = https://github.com/nullworks/libxoverlay.git
+[submodule "external/boost-cmake"]
+	path = external/boost-cmake
+	url = https://github.com/RosneBurgerworks/boost-cmake.git
+[submodule "external/TF2_NavFile_Reader"]
+	path = external/TF2_NavFile_Reader
+	url = https://github.com/nullworks/TF2_NavFile_Reader.git
