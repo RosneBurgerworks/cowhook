@@ -61,7 +61,7 @@ template <typename T> T *BruteforceInterface(const std::string &name, sharedobj:
 {
     T *result;
     std::stringstream stream;
-    for (int i = start; i < 100; i++)
+    for (int i = start; i < 100; ++i)
     {
         stream.str("");
         stream << name;

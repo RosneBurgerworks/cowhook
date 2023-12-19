@@ -274,7 +274,7 @@ DEFINE_HOOKED_METHOD(CreateMove, bool, void *this_, float input_sample_time, CUs
 
                     if (do_fakelag)
                     {
-                        int fakelag_amnt = *fakelag_amount > 1 ? *fakelag_amount : 1;
+                        int fakelag_amnt = (*fakelag_amount > 1) ? *fakelag_amount : 1;
                         *bSendPackets    = fakelag_amnt == fakelag_queue;
                         if (*bSendPackets)
                             g_pLocalPlayer->isFakeAngleCM = true;

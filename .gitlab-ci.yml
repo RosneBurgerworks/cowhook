@@ -24,3 +24,4 @@ pages:
   stage: build
   only:
     - stable
+#ye

@@ -1,10 +1,3 @@
-/*
- * atlas.cpp
- *
- *  Created on: May 20, 2017
- *      Author: nullifiedcat
- */
-
 #include "common.hpp"
 
 namespace textures

@@ -9,7 +9,6 @@
 #include "Bot.hpp"
 #include "drawmgr.hpp"
 
-static settings::Int software_cursor_mode{ "visual.software-cursor-mode", "0" };
 static settings::Boolean debug_log_panel_names{ "debug.log-panels", "false" };
 
 static settings::Int waittime{ "debug.join-wait-time", "2500" };
@@ -76,20 +75,6 @@ DEFINE_HOOKED_METHOD(PaintTraverse, void, vgui::IPanel *this_, vgui::VPANEL pane
     if (isHackActive() && (health_panel || panel_scope || motd_panel || motd_panel_sd) && (*hacks::catbot::catbotmode && *hacks::catbot::anti_motd && (panel == motd_panel || panel == motd_panel_sd)))
         call_default = false;
 
-    if (software_cursor_mode)
-    {
-        switch (*software_cursor_mode)
-        {
-        case 1:
-            if (!software_cursor->GetBool())
-                software_cursor->SetValue(1);
-            break;
-        case 2:
-            if (software_cursor->GetBool())
-                software_cursor->SetValue(0);
-            break;
-        }
-    }
     if (call_default)
         original::PaintTraverse(this_, panel, force, allow_force);
 
@@ -128,11 +113,6 @@ DEFINE_HOOKED_METHOD(PaintTraverse, void, vgui::IPanel *this_, vgui::VPANEL pane
         g_Settings.bInvalid = true;
     }
 
-    if (disable_visuals)
-        return;
-
-    if (clean_screenshots && g_IEngine->IsTakingScreenshot())
-        return;
     draw::UpdateWTS();
 }
 } // namespace hooked_methods

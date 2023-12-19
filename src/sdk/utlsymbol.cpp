@@ -1,11 +1,3 @@
-//========= Copyright Valve Corporation, All rights reserved. ============//
-//
-// Purpose: Defines a symbol table
-//
-// $Header: $
-// $NoKeywords: $
-//=============================================================================//
-
 #pragma warning(disable : 4514)
 
 #include "utlsymbol.h"
@@ -186,7 +178,7 @@ CUtlSymbol CUtlSymbolTable::Find(const char *pString) const
 
 int CUtlSymbolTable::FindPoolWithSpace(int len) const
 {
-    for (int i = 0; i < m_StringPools.Count(); i++)
+    for (int i = 0; i < m_StringPools.Count(); ++i)
     {
         StringPool_t *pPool = m_StringPools[i];
 
@@ -267,7 +259,7 @@ void CUtlSymbolTable::RemoveAll()
 {
     m_Lookup.Purge();
 
-    for (int i = 0; i < m_StringPools.Count(); i++)
+    for (int i = 0; i < m_StringPools.Count(); ++i)
         free(m_StringPools[i]);
 
     m_StringPools.RemoveAll();

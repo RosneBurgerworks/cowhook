@@ -106,7 +106,7 @@ void onKilledBy(unsigned id)
         {
             if (ipc::peer && ipc::peer->connected)
             {
-                std::string command = "cat_ipc_exec_all cat_pl_mark_betrayal " + std::to_string(id);
+                std::string command = "cat_ipc_exec_all cow_pl_mark_betrayal " + std::to_string(id);
                 if (command.length() >= 63)
                     ipc::peer->SendMessage(nullptr, -1, ipc::commands::execute_client_cmd_long, command.c_str(), command.length() + 1);
                 else
@@ -116,7 +116,7 @@ void onKilledBy(unsigned id)
                 {
                     std::ofstream cfg_betrayal;
                     cfg_betrayal.open("tf/cfg/betrayals.cfg", std::ios::app);
-                    cfg_betrayal << "cat_pl_add_id " + std::to_string(id) + " ABUSE\n";
+                    cfg_betrayal << "cow_pl_add_id " + std::to_string(id) + " ABUSE\n";
                     cfg_betrayal.close();
                 }
             }

@@ -19,7 +19,7 @@ std::atomic_bool is_stopping{ false };
 bool IsStopping()
 {
     std::unique_lock lock(mutex_quit, std::try_to_lock);
-    if (!lock.owns_lock())
+    if (!lock.owns_lock()) [[unlikely]]
     {
         logging::Info("Shutting down, unlocking mutex");
         return true;
@@ -32,7 +32,7 @@ void MainThread()
 {
     hack::Initialize();
     logging::Info("Init done...");
-    while (!IsStopping())
+    while (!IsStopping()) [[likely]]
         hack::Think();
     hack::Shutdown();
     logging::Shutdown();
@@ -64,7 +64,7 @@ void __attribute__((destructor)) deconstruct()
     detach();
 }
 
-CatCommand cat_detach("detach", "Detach cathook from TF2",
+CatCommand cat_detach("detach", "Detach Rosnehook from TF2",
                       []()
                       {
                           hack::game_shutdown = false;

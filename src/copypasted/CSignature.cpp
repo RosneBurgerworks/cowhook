@@ -33,7 +33,7 @@ Elf32_Shdr *getSectionHeader(void *module, const char *sectionName)
         logging::Info("String table header was corrupted!");
     }
 
-    for (int i = 0; i < ehdr->e_shnum; i++)
+    for (int i = 0; i < ehdr->e_shnum; ++i)
     {
         Elf32_Shdr *hdr = &shdr[i];
         if (hdr && hdr->sh_name < strtabSize)

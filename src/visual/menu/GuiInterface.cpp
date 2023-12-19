@@ -1,6 +1,3 @@
-/*
-  Created on 29.07.18.
-*/
 #include <menu/GuiInterface.hpp>
 
 #include <menu/menu/Menu.hpp>
@@ -50,7 +47,7 @@ static void initPlayerlist()
             [](unsigned steam, int userid)
             {
                 auto &pl = playerlist::AccessData(steam);
-                for (unsigned i = 0; i < playerlist::k_arrGUIStates.size() - 1; i++)
+                for (unsigned i = 0; i < playerlist::k_arrGUIStates.size() - 1; ++i)
                 {
                     if (pl.state == playerlist::k_arrGUIStates.at(i).first)
                     {
@@ -71,7 +68,7 @@ static void initPlayerlist()
 
 void sortPList()
 {
-    for (auto i = 1; i <= g_GlobalVars->maxClients; ++i)
+    for (auto i = 1; i <= MAX_PLAYERS; ++i)
     {
         player_info_s info{};
         if (GetPlayerInfo(i, &info))
@@ -83,7 +80,7 @@ void sortPList()
             }
         }
     }
-    for (auto i = 1; i <= g_GlobalVars->maxClients; ++i)
+    for (auto i = 1; i <= MAX_PLAYERS; ++i)
     {
         player_info_s info{};
         if (GetPlayerInfo(i, &info))
@@ -95,7 +92,7 @@ void sortPList()
             }
         }
     }
-    for (auto i = 1; i <= g_GlobalVars->maxClients; ++i)
+    for (auto i = 1; i <= MAX_PLAYERS; ++i)
     {
         player_info_s info{};
         if (GetPlayerInfo(i, &info))
@@ -112,6 +109,19 @@ void sortPList()
 class PlayerListEventListener : public IGameEventListener
 {
 public:
+    typedef void (PlayerListEventListener::*EventAction)(KeyValues*, int);
+
+    PlayerListEventListener()
+    {
+        eventActions["player_connect_client"] = &PlayerListEventListener::addPlayer;
+        eventActions["player_disconnect"] = &PlayerListEventListener::removePlayer;
+        eventActions["player_team"] = &PlayerListEventListener::updatePlayerTeam;
+        eventActions["player_changeclass"] = &PlayerListEventListener::updatePlayerClass;
+        eventActions["player_changename"] = &PlayerListEventListener::updatePlayerName;
+        eventActions["player_death"] = &PlayerListEventListener::updatePlayerLifeState;
+        eventActions["player_spawn"] = &PlayerListEventListener::updatePlayerLifeState;
+    }
+
     void FireGameEvent(KeyValues *event) override
     {
         if (!controller)
@@ -122,44 +132,50 @@ public:
             return;
 
         std::string name = event->GetName();
-        if (name == "player_connect_client")
-        {
-            logging::Info("addPlayer %d", userid);
+
+        // Check if the event name is in the map and call the corresponding function
+        if (eventActions.find(name) != eventActions.end()) {
+            (this->*eventActions[name])(event, userid);
             controller->removeAll();
             sortPList();
         }
-        else if (name == "player_disconnect")
-        {
-            // logging::Info("removePlayer %d", userid);
-            controller->removeAll();
-            sortPList();
-        }
-        else if (name == "player_team")
-        {
-            // logging::Info("updatePlayerTeam %d", userid);
-            controller->removeAll();
-            sortPList();
-        }
-        else if (name == "player_changeclass")
-        {
-            // logging::Info("updatePlayerClass %d", userid);
-            controller->updatePlayerClass(userid, event->GetInt("class"));
-        }
-        else if (name == "player_changename")
-        {
-            // logging::Info("updatePlayerName %d", userid);
-            controller->updatePlayerName(userid, event->GetString("newname"));
-        }
-        else if (name == "player_death")
-        {
-            // logging::Info("updatePlayerLifeState %d", userid);
-            controller->updatePlayerLifeState(userid, true);
-        }
-        else if (name == "player_spawn")
-        {
-            // logging::Info("updatePlayerLifeState %d", userid);
-            controller->updatePlayerLifeState(userid, false);
-        }
+    }
+
+private:
+    std::unordered_map<std::string, EventAction> eventActions;
+
+    void addPlayer(KeyValues* event, int userid)
+    {
+        logging::Info("addPlayer %d", userid);
+    }
+
+    void removePlayer(KeyValues* event, int userid)
+    {
+        // logging::Info("removePlayer %d", userid);
+    }
+
+    void updatePlayerTeam(KeyValues* event, int userid)
+    {
+        // logging::Info("updatePlayerTeam %d", userid);
+    }
+
+    void updatePlayerClass(KeyValues* event, int userid)
+    {
+        // logging::Info("updatePlayerClass %d", userid);
+        controller->updatePlayerClass(userid, event->GetInt("class"));
+    }
+
+    void updatePlayerName(KeyValues* event, int userid)
+    {
+        // logging::Info("updatePlayerName %d", userid);
+        controller->updatePlayerName(userid, event->GetString("newname"));
+    }
+
+    void updatePlayerLifeState(KeyValues* event, int userid)
+    {
+        // logging::Info("updatePlayerLifeState %d", userid);
+        bool isDead = (event->GetName() == "player_death");
+        controller->updatePlayerLifeState(userid, isDead);
     }
 };
 
@@ -168,6 +184,14 @@ static PlayerListEventListener listener{};
 static void load()
 {
     zerokernel::Menu::instance->loadFromFile(paths::getDataPath("/menu"), "menu.xml");
+
+    zerokernel::Container *sv = dynamic_cast<zerokernel::Container *>(zerokernel::Menu::instance->wm->getElementById("special-variables"));
+    if (sv)
+    {
+        zerokernel::special::SettingsManagerList list(*sv);
+        list.construct();
+        printf("SV found\n");
+    }
 
     zerokernel::Container *cl = dynamic_cast<zerokernel::Container *>(zerokernel::Menu::instance->wm->getElementById("cfg-list"));
     if (cl)

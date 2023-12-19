@@ -4,10 +4,9 @@
 #include "WeaponData.hpp"
 #include "netadr.h"
 
-
 namespace criticals
 {
-settings::Boolean enabled{ "crit.enabled", "true" };
+settings::Boolean enabled{ "crit.enabled", "false" };
 settings::Boolean melee{ "crit.melee", "true" };
 static settings::Button crit_key{ "crit.key", "<null>" };
 static settings::Boolean force_no_crit{ "crit.anti-crit", "true" };
@@ -53,7 +52,7 @@ static float getWithdrawMult(IClientEntity *wep)
     int crit_checks  = info.crit_attempts + 1;
     float flMultiply = 0.5;
 
-    if (g_pLocalPlayer->weapon_mode != weapon_melee)
+    if (GetWeaponMode() != weapon_melee)
         flMultiply = RemapValClamped(((float) call_count / (float) crit_checks), 0.1f, 1.f, 1.f, 3.f);
 
     float flToRemove = flMultiply * 3.0f;
@@ -143,9 +142,9 @@ static float getCritCap(IClientEntity *wep)
 
     // Weapon specific Multiplier
     float chance = 0.02f;
-    if (g_pLocalPlayer->weapon_mode == weapon_melee)
+    if (GetWeaponMode() == weapon_melee)
         chance = 0.15f;
-    float flMultCritChance = ATTRIB_HOOK_FLOAT(crit_mult * chance, "mult_crit_chance", wep, 0, 1);
+    float flMultCritChance = ATTRIB_HOOK_FLOAT(crit_mult * chance, "mult_crit_chance", wep, nullptr, true);
 
     if (isRapidFire(wep))
     {
@@ -154,10 +153,10 @@ static float getCritCap(IClientEntity *wep)
         // get the fixed amount of time that we start firing crit shots for
         float flCritDuration = 2.0f;
         // calculate the amount of time, on average, that we want to NOT fire crit shots for in order to achieve the total crit chance we want
-        float flNonCritDuration = (flCritDuration / flTotalCritChance) - flCritDuration;
+        float flNonCritDuration = flCritDuration / flTotalCritChance - flCritDuration;
         // calculate the chance per second of non-crit fire that we should transition into critting such that on average we achieve the total crit chance we want
         float flStartCritChance = 1 / flNonCritDuration;
-        flMultCritChance        = ATTRIB_HOOK_FLOAT(flStartCritChance, "mult_crit_chance", wep, 0, 1);
+        flMultCritChance        = ATTRIB_HOOK_FLOAT(flStartCritChance, "mult_crit_chance", wep, nullptr, true);
     }
 
     return flMultCritChance;
@@ -179,7 +178,7 @@ static std::pair<float, float> critMultInfo(IClientEntity *wep)
     float cur_crit        = getCritCap(wep);
     float observed_chance = CE_FLOAT(LOCAL_W, netvar.flObservedCritChance);
     float needed_chance   = cur_crit + 0.1f;
-    return std::pair<float, float>(observed_chance, needed_chance);
+    return { observed_chance, needed_chance };
 }
 
 // How much damage we need until we can crit
@@ -187,7 +186,7 @@ static int damageUntilToCrit(IClientEntity *wep)
 {
     // First check if we even need to deal damage at all
     auto crit_info = critMultInfo(wep);
-    if (crit_info.first <= crit_info.second || g_pLocalPlayer->weapon_mode == weapon_melee)
+    if (crit_info.first <= crit_info.second || GetWeaponMode() == weapon_melee)
         return 0;
 
     float target_chance = critMultInfo(wep).second;
@@ -254,7 +253,7 @@ bool isEnabled()
     if (!randomCritEnabled())
         return false;
     // Melee overrides the enabled switch
-    if (melee || enabled)
+    if (*enabled || *melee)
         return true;
     // If none of these conditions pass, crithack is NOT on
     return false;
@@ -262,7 +261,7 @@ bool isEnabled()
 
 bool shouldMeleeCrit()
 {
-    if (!melee || g_pLocalPlayer->weapon_mode != weapon_melee)
+    if (!*melee || GetWeaponMode() != weapon_melee)
         return false;
     if (hacks::backtrack::backtrackEnabled())
     {
@@ -276,13 +275,13 @@ bool shouldMeleeCrit()
         }
         else
         {
-            for (auto const &ent_data : hacks::backtrack::bt_data)
+            for (const auto &ent_data : hacks::backtrack::bt_data)
             {
                 for (auto &tick : ent_data)
                 {
                     if (!tick.in_range)
                         continue;
-                    float distance = tick.m_vecOrigin.DistTo(g_pLocalPlayer->v_Origin);
+                    float distance = tick.m_vecOrigin.DistToSqr(g_pLocalPlayer->v_Origin);
                     if (distance < best_distance)
                     {
                         best_distance = distance;
@@ -295,7 +294,7 @@ bool shouldMeleeCrit()
         if (closest_tick)
         {
             // Out of range, don't crit
-            if (closest_tick->m_vecOrigin.DistTo(LOCAL_E->m_vecOrigin()) >= re::C_TFWeaponBaseMelee::GetSwingRange(RAW_ENT(LOCAL_W)) + 100.0f)
+            if (closest_tick->m_vecOrigin.DistTo(g_pLocalPlayer->v_Origin) >= re::C_TFWeaponBaseMelee::GetSwingRange(RAW_ENT(LOCAL_W)) + 150.0f)
                 return false;
         }
         else
@@ -304,8 +303,8 @@ bool shouldMeleeCrit()
     // Normal check, get closest entity and check distance
     else
     {
-        auto ent = getClosestEntity(LOCAL_E->m_vecOrigin());
-        if (!ent || ent->m_flDistance() >= re::C_TFWeaponBaseMelee::GetSwingRange(RAW_ENT(LOCAL_W)) + 100.0f)
+        auto ent = getClosestEntity(g_pLocalPlayer->v_Origin);
+        if (!ent || ent->m_flDistance() >= re::C_TFWeaponBaseMelee::GetSwingRange(RAW_ENT(LOCAL_W)) + 150.0f)
             return false;
     }
     return true;
@@ -320,16 +319,42 @@ bool shouldCrit()
     static bool pressed_key_last_tick = false;
     static int loose_cannon_countdown = 0;
     // Crit key + enabled, for melee, the crit key MUST be set
-    if (enabled && ((g_pLocalPlayer->weapon_mode != weapon_melee && !crit_key) || crit_key.isKeyDown()))
+    if (*enabled && (GetWeaponMode() != weapon_melee && !crit_key || crit_key.isKeyDown()))
     {
         pressed_key_last_tick = true;
         return true;
     }
+    // Special code for loose cannon since projectile is delayed
+    if (!crit_key.isKeyDown() && (pressed_key_last_tick || loose_cannon_countdown))
+    {
+        if (pressed_key_last_tick)
+            loose_cannon_countdown = 7;
+        pressed_key_last_tick          = false;
+        static unsigned last_tickcount = 0;
+        if (tickcount != last_tickcount)
+        {
+            last_tickcount = tickcount;
+            loose_cannon_countdown--;
+        }
+        if (CE_GOOD(LOCAL_W) && LOCAL_W->m_iClassID() == CL_CLASS(CTFCannon))
+            return true;
+    }
+    // Force crits on sticky launcher
+    /*if (force_ticks)
+    {
+        if (LOCAL_W->m_iClassID() == CL_CLASS(CTFPipebombLauncher))
+            return true;
+        else
+            force_ticks = 0;
+    }*/
+    // Tick is supposed to be forced because of something external to crithack
     if (force_crit_this_tick)
         return true;
     return false;
 }
 
+// BeggarsCanWeaponCrit
+static bool can_beggars_crit   = false;
 static bool attacked_last_tick = false;
 
 bool canWeaponCrit(bool draw = false)
@@ -350,18 +375,18 @@ bool canWeaponCrit(bool draw = false)
     // Misc checks
     if (!isAllowedToWithdrawFromBucket(weapon))
         return false;
-    if (!draw && !CanShoot() && !isRapidFire(weapon))
+    if (!draw && !CanShoot() && !isRapidFire(weapon) && LOCAL_W->m_iClassID() != CL_CLASS(CTFCannon))
         return false;
-    if (!draw && CE_INT(LOCAL_W, netvar.iItemDefinitionIndex) == 730)
+    if (!draw && CE_INT(LOCAL_W, netvar.iItemDefinitionIndex) == 730 && !can_beggars_crit)
         return false;
     // Check if we have done enough damage to crit
     auto crit_mult_info = critMultInfo(weapon);
-    if (crit_mult_info.first > crit_mult_info.second && g_pLocalPlayer->weapon_mode != weapon_melee)
+    if (crit_mult_info.first > crit_mult_info.second && GetWeaponMode() != weapon_melee)
         return false;
     return true;
 }
 
-// We cycle between the crit cmds so we want to store where we are currently at
+// We cycle between the crit cmds, so we want to store where we are currently at
 size_t current_index = 0;
 // Cache Weapons
 std::unordered_map<int, std::vector<int>> crit_cmds;
@@ -397,32 +422,47 @@ bool prevent_crit()
 // Main function that forces a crit
 void force_crit()
 {
-
-   // New mode stuff (well when not using melee)
-if (g_pLocalPlayer->weapon_mode != weapon_melee)
-{
-    // We have valid crit command numbers
-    if (crit_cmds.size() && crit_cmds.find(LOCAL_W->m_IDX) != crit_cmds.end() && crit_cmds.find(LOCAL_W->m_IDX)->second.size())
+    // New mode stuff (well when not using melee nor using pipe launcher)
+    if (GetWeaponMode() != weapon_melee && LOCAL_W->m_iClassID() != CL_CLASS(CTFPipebombLauncher))
     {
-        if (current_index >= crit_cmds.at(LOCAL_W->m_IDX).size())
-            current_index = 0;
+        // We have valid crit command numbers
+        if (!crit_cmds.empty() && crit_cmds.find(LOCAL_W->m_IDX) != crit_cmds.end() && !crit_cmds.find(LOCAL_W->m_IDX)->second.empty())
+        {
+            if (current_index >= crit_cmds.at(LOCAL_W->m_IDX).size())
+                current_index = 0;
 
-        // Magic crit cmds get used to force a crit
-        current_late_user_cmd->command_number = crit_cmds.at(LOCAL_W->m_IDX).at(current_index);
-        current_late_user_cmd->random_seed    = MD5_PseudoRandom(current_late_user_cmd->command_number) & 0x7FFFFFFF;
-        current_index++;
+            // Magic crit cmds get used to force a crit
+            current_late_user_cmd->command_number = crit_cmds.at(LOCAL_W->m_IDX).at(current_index);
+            current_late_user_cmd->random_seed    = MD5_PseudoRandom(current_late_user_cmd->command_number) & 0x7FFFFFFF;
+            current_index++;
+        }
     }
-}
-// We can just force to nearest crit for melee
-else
-{
-    int next_crit = nextCritTick();
-    if (next_crit != -1)
+    // We can just force to nearest crit for melee, and sticky launchers apparently
+    else
     {
-        current_late_user_cmd->command_number = next_crit;
-        current_late_user_cmd->random_seed    = MD5_PseudoRandom(next_crit) & 0x7FFFFFFF;
+        int next_crit = nextCritTick();
+        if (next_crit != -1)
+        {
+            if (LOCAL_W->m_iClassID() == CL_CLASS(CTFPipebombLauncher))
+            {
+                /*if (!force_ticks && isEnabled())
+                    force_ticks = 3;
+                if (force_ticks)
+                    force_ticks--;*/
+                /*// Prevent crits
+                prevent_ticks = 3;
+                if (prevent_ticks)
+                {
+                    prevent_crit();
+                    prevent_ticks--;
+                    return;
+                }*/
+            }
+            current_late_user_cmd->command_number = next_crit;
+            current_late_user_cmd->random_seed    = MD5_PseudoRandom(next_crit) & 0x7FFFFFFF;
+        }
     }
-}
+    force_crit_this_tick = false;
 }
 
 // Update the magic crit commands numbers
@@ -463,7 +503,7 @@ static void updateCmds()
     {
         // Used later for the seed
         int xor_dat = (weapon->entindex() << 8 | LOCAL_E->m_IDX);
-        if (g_pLocalPlayer->weapon_mode == weapon_melee)
+        if (GetWeaponMode() == weapon_melee)
             xor_dat = (weapon->entindex() << 16 | LOCAL_E->m_IDX << 8);
 
         // Clear old data
@@ -501,12 +541,12 @@ static void updateCmds()
         weapon_info info(weapon);
         int nProjectilesPerShot = GetWeaponData(weapon)->m_nBulletsPerShot;
         if (nProjectilesPerShot >= 1)
-            nProjectilesPerShot = ATTRIB_HOOK_FLOAT(nProjectilesPerShot, "mult_bullets_per_shot", weapon, 0x0, true);
+            nProjectilesPerShot = ATTRIB_HOOK_FLOAT(nProjectilesPerShot, "mult_bullets_per_shot", weapon, nullptr, true);
         else
             nProjectilesPerShot = 1;
 
         added_per_shot = GetWeaponData(weapon)->m_nDamage;
-        added_per_shot = ATTRIB_HOOK_FLOAT(added_per_shot, "mult_dmg", weapon, 0x0, true);
+        added_per_shot = ATTRIB_HOOK_FLOAT(added_per_shot, "mult_dmg", weapon, nullptr, true);
         added_per_shot *= nProjectilesPerShot;
         shots_to_fill_bucket = getBucketCap() / added_per_shot;
         // Special boi
@@ -539,7 +579,7 @@ static weapon_info last_weapon_info;
 // Fix bucket on non-local servers
 void fixBucket(IClientEntity *weapon, CUserCmd *cmd)
 {
-    INetChannel *ch = (INetChannel *) g_IEngine->GetNetChannelInfo();
+    auto *ch = (INetChannel *) g_IEngine->GetNetChannelInfo();
     if (!ch)
         return;
 
@@ -571,7 +611,7 @@ void fixBucket(IClientEntity *weapon, CUserCmd *cmd)
 bool isExploitingDoubleAttack()
 {
     // Exploit doesn't work if you don't press IN_ATTACK2 + IN_ATTACK, aren't using a melee weapon or aren't playing engineer
-    if (!(current_user_cmd->buttons & IN_ATTACK2) || g_pLocalPlayer->weapon_mode != weapon_melee || g_pLocalPlayer->clazz != tf_engineer)
+    if (!(current_user_cmd->buttons & IN_ATTACK2) || GetWeaponMode() != weapon_melee || g_pLocalPlayer->clazz != tf_engineer)
         return false;
 
     // Get the entity that we are looking at and check if it is a building that we built
@@ -598,9 +638,8 @@ static void CreateMove()
     cached_damage = g_pPlayerResource->GetDamage(g_pLocalPlayer->entity_idx) - melee_damage;
 
     // We need to update player states regardless, else we can't sync the observed crit chance
-    for (auto const &ent: entity_cache::player_cache)
+    for (const auto &ent : entity_cache::player_cache)
     {
-        // no valid check needed, GetHealth only uses m_IDX
         if (ent->m_iHealth() > 0)
         {
             auto &status = player_status_list[ent->m_IDX - 1];
@@ -628,6 +667,56 @@ static void CreateMove()
     // Update magic crit commands
     updateCmds();
 
+    // Beggars check
+    if (CE_INT(LOCAL_W, netvar.iItemDefinitionIndex) == 730)
+    {
+        // Check if we released the barrage by releasing m1, also lock bool so people don't just release m1 and tap it again
+        if (!can_beggars_crit)
+            can_beggars_crit = !(current_late_user_cmd->buttons & IN_ATTACK) && attacked_last_tick;
+        // Update
+        attacked_last_tick = current_late_user_cmd->buttons & IN_ATTACK;
+        if (!CE_INT(LOCAL_W, netvar.m_iClip1) && CE_INT(LOCAL_W, netvar.iReloadMode) == 0)
+        {
+            // Reset
+            can_beggars_crit = false;
+        }
+    }
+    else
+        can_beggars_crit = false;
+
+    // No point in forcing/preventing crits if we can't even crit
+    if (!canWeaponCrit())
+        return;
+
+    // Not in attack? Do nothing, unless using the beggars/Sticky launcher
+    if (!(current_late_user_cmd->buttons & IN_ATTACK))
+    {
+        if (LOCAL_W->m_iClassID() == CL_CLASS(CTFPipebombLauncher))
+        {
+            float chargebegin = *((float *) ((uintptr_t) RAW_ENT(LOCAL_W) + 3156));
+            float chargetime  = g_GlobalVars->curtime - chargebegin;
+
+            static bool currently_charging_pipe = false;
+
+            // Sticky started charging
+            if (chargetime < 6.0f && chargetime)
+                currently_charging_pipe = true;
+
+            // Sticky was released
+            if (!(current_user_cmd->buttons & IN_ATTACK) && currently_charging_pipe)
+            {
+                currently_charging_pipe = false;
+            }
+            else
+                return;
+        }
+        else if (LOCAL_W->m_iClassID() == CL_CLASS(CTFCannon))
+        {
+        }
+        else if (!can_beggars_crit)
+            return;
+    }
+
     // Is the player currently performing the double engi melee attack exploit? If yes, force a crit this tick
     if (isExploitingDoubleAttack())
         force_crit_this_tick = true;
@@ -638,7 +727,7 @@ static void CreateMove()
         force_crit();
     }
     // Ok, we shouldn't crit for whatever reason, lets prevent crits
-    else if (force_no_crit)
+    else if (*force_no_crit)
     {
         // if (prevent_ticks >= 1)
         //    prevent_ticks--;
@@ -662,7 +751,7 @@ static std::array<std::string, 32> crit_strings;
 static size_t crit_strings_count{ 0 };
 static std::array<rgba_t, 32> crit_strings_colors{ colors::empty };
 
-static std::string bar_string = "";
+static std::string bar_string;
 
 void AddCritString(const std::string &string, const rgba_t &color)
 {
@@ -677,7 +766,7 @@ void DrawCritStrings()
     float x = *bar_x + *size;
     float y = *bar_y + *size / 5.0f;
 
-    if (bar_string != "")
+    if (!bar_string.empty())
     {
         float sx, sy;
         fonts::center_screen->stringSize(bar_string, &sx, &sy);
@@ -705,7 +794,7 @@ void Draw()
 {
     if (!isEnabled())
         return;
-    if (!draw && !draw_meter)
+    if (!*draw && !*draw_meter)
         return;
     if (!g_IEngine->GetNetChannelInfo())
         last_crit_tick = -1;
@@ -735,7 +824,7 @@ void Draw()
         std::pair<float, float> crit_mult_info = critMultInfo(wep);
 
         // Draw Text
-        if (draw)
+        if (*draw)
         {
             // Display for when crithack is active
             if (shouldCrit())
@@ -758,7 +847,7 @@ void Draw()
             if (is_out_of_sync)
                 AddCritString("Out of sync", colors::red_s);
             // Observed crit chance is not low enough, display how much damage is needed until we can crit again
-            else if (crit_mult_info.first > crit_mult_info.second && g_pLocalPlayer->weapon_mode != weapon_melee)
+            else if (crit_mult_info.first > crit_mult_info.second && GetWeaponMode() != weapon_melee)
                 AddCritString(std::to_string(int(damageUntilToCrit(wep))) + " damage required", colors::yellow);
             else if (!can_crit)
             {
@@ -782,13 +871,13 @@ void Draw()
 
             // Mark bucket as ready/not ready
             auto color = colors::red_s;
-            if (can_crit && (crit_mult_info.first <= crit_mult_info.second || g_pLocalPlayer->weapon_mode != weapon_melee))
+            if (can_crit && (crit_mult_info.first <= crit_mult_info.second || GetWeaponMode() != weapon_melee))
                 color = colors::green;
             AddCritString("Crit bucket: " + std::to_string(int(bucket)), color);
         }
 
         // Draw Bar
-        if (draw_meter)
+        if (*draw_meter)
         {
             // Can crit?
             if (re::C_TFWeaponBase::CanFireCriticalShot(RAW_ENT(LOCAL_W), false, nullptr) && added_per_shot)
@@ -833,13 +922,14 @@ void Draw()
                 draw::Rectangle(*bar_x - 5.0f, *bar_y - 5.0f, bar_bg_x_size + 10.0f, bar_bg_y_size + 10.0f, background_color);
 
                 // Need special draw logic here
-                if (is_out_of_sync || (crit_mult_info.first > crit_mult_info.second && g_pLocalPlayer->weapon_mode != weapon_melee) || !can_crit)
+                auto weapon_mode = GetWeaponMode();
+                if (is_out_of_sync || (crit_mult_info.first > crit_mult_info.second && weapon_mode != weapon_melee) || !can_crit)
                 {
                     draw::Rectangle(*bar_x, *bar_y, bar_bg_x_size * bucket_percentage, bar_bg_y_size, bucket_color);
 
                     if (is_out_of_sync)
                         bar_string = "Out of sync";
-                    else if (crit_mult_info.first > crit_mult_info.second && g_pLocalPlayer->weapon_mode != weapon_melee)
+                    else if (crit_mult_info.first > crit_mult_info.second && weapon_mode != weapon_melee)
                         bar_string = std::to_string(int(damageUntilToCrit(wep))) + " damage required";
                     else
                     {
@@ -861,7 +951,7 @@ void Draw()
                     }
                 }
                 // Still run when out of sync
-                if (!((crit_mult_info.first > crit_mult_info.second && g_pLocalPlayer->weapon_mode != weapon_melee) || !can_crit))
+                if (!((crit_mult_info.first > crit_mult_info.second && weapon_mode != weapon_melee) || !can_crit))
                 {
 
                     // Calculate how big the green part needs to be
@@ -970,9 +1060,9 @@ void observedcritchance_nethook(const CRecvProxyData *data, void *pWeapon, void 
     // Do default action by default
     auto fl_observed_crit_chance = reinterpret_cast<float *>(out);
     *fl_observed_crit_chance     = data->m_Value.m_Float;
-    if (CE_BAD(LOCAL_W) || !enabled)
+    if (!*enabled || CE_BAD(LOCAL_W))
         return;
-    if (pWeapon != LOCAL_W->InternalEntity())
+    if (pWeapon != RAW_ENT(LOCAL_W))
         return;
 
     float sent_chance = data->m_Value.m_Float;
@@ -989,11 +1079,11 @@ void observedcritchance_nethook(const CRecvProxyData *data, void *pWeapon, void 
             // Powered by math
             crit_damage = (3.0f * ranged_damage * sent_chance) / (2.0f * sent_chance + 1);
         }
-        if (debug_desync)
+        if (*debug_desync)
         {
             float old_observed_chance = getObservedCritChance();
             // We Were out of sync with the server
-            if (debug_desync && sent_chance > old_observed_chance && fabsf(sent_chance - old_observed_chance) > 0.01f)
+            if (sent_chance > old_observed_chance && std::fabs(sent_chance - old_observed_chance) > 0.01f)
             {
                 logging::Info("Out of sync! Observed crit chance is %f, but client expected: %f, fixed to %f", data->m_Value.m_Float, old_observed_chance, getObservedCritChance());
             }

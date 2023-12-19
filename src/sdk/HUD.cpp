@@ -1,10 +1,3 @@
-/*
- * HUD.cpp
- *
- *  Created on: Jun 4, 2017
- *      Author: nullifiedcat
- */
-
 #include <core/logging.hpp>
 #include "sdk/HUD.h"
 
@@ -18,6 +11,10 @@ CHudElement *CHud::FindElement(const char *name)
                                                                  "89 F6 8D BC 27 00 00 00 00 83 C3 01 39 5E 28 7E 38 8B 46 1C 8D 3C 9D "
                                                                  "00 00 00 00 8B 04 98 8B 08 89 04 24 FF 51 24 8B 55 0C 89 04 24");
     typedef CHudElement *(*FindElement)(CHud *, const char *);
-    ((FindElement)(findel_sig))(this, name);
-    return ((FindElement)(findel_sig))(this, name);
+    ((FindElement) (findel_sig))(this, name);
+    return ((FindElement) (findel_sig))(this, name);
+}
+float &CHud::GetSensitivityFactor()
+{
+    return *(float *) ((uintptr_t) this + 8);
 }

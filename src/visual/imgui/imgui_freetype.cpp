@@ -1,26 +1,3 @@
-// Wrapper to use FreeType (instead of stb_truetype) for Dear ImGui
-// Get latest version at https://github.com/ocornut/imgui/tree/master/misc/freetype
-// Original code by @vuhdo (Aleksei Skriabin). Improvements by @mikesart. Maintained and v0.60+ by @ocornut.
-
-// Changelog:
-// - v0.50: (2017/08/16) imported from https://github.com/Vuhdo/imgui_freetype into http://www.github.com/ocornut/imgui_club, updated for latest changes in ImFontAtlas, minor tweaks.
-// - v0.51: (2017/08/26) cleanup, optimizations, support for ImFontConfig::RasterizerFlags, ImFontConfig::RasterizerMultiply.
-// - v0.52: (2017/09/26) fixes for imgui internal changes.
-// - v0.53: (2017/10/22) minor inconsequential change to match change in master (removed an unnecessary statement).
-// - v0.54: (2018/01/22) fix for addition of ImFontAtlas::TexUvscale member.
-// - v0.55: (2018/02/04) moved to main imgui repository (away from http://www.github.com/ocornut/imgui_club)
-// - v0.56: (2018/06/08) added support for ImFontConfig::GlyphMinAdvanceX, GlyphMaxAdvanceX.
-// - v0.60: (2019/01/10) re-factored to match big update in STB builder. fixed texture height waste. fixed redundant glyphs when merging. support for glyph padding.
-// - v0.61: (2019/01/15) added support for imgui allocators + added FreeType only override function SetAllocatorFunctions().
-
-// Gamma Correct Blending:
-//  FreeType assumes blending in linear space rather than gamma space.
-//  See https://www.freetype.org/freetype2/docs/reference/ft2-base_interface.html#FT_Render_Glyph
-//  For correct results you need to be using sRGB and convert to linear space in the pixel shader output.
-//  The default imgui styles will be impacted by this change (alpha values will need tweaking).
-
-// FIXME: cfg.OversampleH, OversampleV are not supported (but perhaps not so necessary with this rasterizer).
-
 #include "visual/imgui/imgui_freetype.h"
 #include "visual/imgui/imgui_internal.h" // ImMin,ImMax,ImFontAtlasBuild*,
 #include <stdint.h>
@@ -40,37 +17,6 @@
 
 namespace
 {
-// Glyph metrics:
-// --------------
-//
-//                       xmin                     xmax
-//                        |                         |
-//                        |<-------- width -------->|
-//                        |                         |
-//              |         +-------------------------+----------------- ymax
-//              |         |    ggggggggg   ggggg    |     ^        ^
-//              |         |   g:::::::::ggg::::g    |     |        |
-//              |         |  g:::::::::::::::::g    |     |        |
-//              |         | g::::::ggggg::::::gg    |     |        |
-//              |         | g:::::g     g:::::g     |     |        |
-//    offsetX  -|-------->| g:::::g     g:::::g     |  offsetY     |
-//              |         | g:::::g     g:::::g     |     |        |
-//              |         | g::::::g    g:::::g     |     |        |
-//              |         | g:::::::ggggg:::::g     |     |        |
-//              |         |  g::::::::::::::::g     |     |      height
-//              |         |   gg::::::::::::::g     |     |        |
-//  baseline ---*---------|---- gggggggg::::::g-----*--------      |
-//            / |         |             g:::::g     |              |
-//     origin   |         | gggggg      g:::::g     |              |
-//              |         | g:::::gg   gg:::::g     |              |
-//              |         |  g::::::ggg:::::::g     |              |
-//              |         |   gg:::::::::::::g      |              |
-//              |         |     ggg::::::ggg        |              |
-//              |         |         gggggg          |              v
-//              |         +-------------------------+----------------- ymin
-//              |                                   |
-//              |------------- advanceX ----------->|
-
 /// A structure that describe a glyph.
 struct GlyphInfo
 {
@@ -132,22 +78,16 @@ bool FreeTypeFont::InitFont(FT_Library ft_library, const ImFontConfig &cfg, unsi
     SetPixelHeight((uint32_t) cfg.SizePixels);
 
     // Convert to FreeType flags (NB: Bold and Oblique are processed separately)
-    UserFlags = cfg.RasterizerFlags | extra_user_flags;
-    LoadFlags = FT_LOAD_NO_BITMAP;
-    if (UserFlags & ImGuiFreeType::NoHinting)
-        LoadFlags |= FT_LOAD_NO_HINTING;
-    if (UserFlags & ImGuiFreeType::NoAutoHint)
-        LoadFlags |= FT_LOAD_NO_AUTOHINT;
-    if (UserFlags & ImGuiFreeType::ForceAutoHint)
-        LoadFlags |= FT_LOAD_FORCE_AUTOHINT;
-    if (UserFlags & ImGuiFreeType::LightHinting)
-        LoadFlags |= FT_LOAD_TARGET_LIGHT;
-    else if (UserFlags & ImGuiFreeType::MonoHinting)
-        LoadFlags |= FT_LOAD_TARGET_MONO;
-    else
-        LoadFlags |= FT_LOAD_TARGET_NORMAL;
+UserFlags = cfg.RasterizerFlags | extra_user_flags;
+LoadFlags = FT_LOAD_NO_BITMAP;
 
-    return true;
+LoadFlags |= (UserFlags & ImGuiFreeType::NoHinting) ? FT_LOAD_NO_HINTING : 0;
+LoadFlags |= (UserFlags & ImGuiFreeType::NoAutoHint) ? FT_LOAD_NO_AUTOHINT : 0;
+LoadFlags |= (UserFlags & ImGuiFreeType::ForceAutoHint) ? FT_LOAD_FORCE_AUTOHINT : 0;
+LoadFlags |= (UserFlags & ImGuiFreeType::LightHinting) ? FT_LOAD_TARGET_LIGHT : 0;
+LoadFlags |= (UserFlags & ImGuiFreeType::MonoHinting) ? FT_LOAD_TARGET_MONO : FT_LOAD_TARGET_NORMAL;
+
+return true;
 }
 
 void FreeTypeFont::CloseFont()
@@ -237,13 +177,13 @@ void FreeTypeFont::BlitGlyph(const FT_Bitmap *ft_bitmap, uint8_t *dst, uint32_t 
 
     if (multiply_table == NULL)
     {
-        for (uint32_t y = 0; y < h; y++, src += src_pitch, dst += dst_pitch)
+        for (uint32_t y = 0; y < h; ++y, src += src_pitch, dst += dst_pitch)
             memcpy(dst, src, w);
     }
     else
     {
-        for (uint32_t y = 0; y < h; y++, src += src_pitch, dst += dst_pitch)
-            for (uint32_t x = 0; x < w; x++)
+        for (uint32_t y = 0; y < h; ++y, src += src_pitch, dst += dst_pitch)
+            for (uint32_t x = 0; x < w; ++x)
                 dst[x] = multiply_table[src[x]];
     }
 }
@@ -372,7 +312,7 @@ bool ImFontAtlasBuildWithFreeType(FT_Library ft_library, ImFontAtlas *atlas, uns
         IM_ASSERT(sizeof(src_tmp.GlyphsSet.Storage.Data[0]) == sizeof(int));
         const int *it_begin = src_tmp.GlyphsSet.Storage.begin();
         const int *it_end   = src_tmp.GlyphsSet.Storage.end();
-        for (const int *it = it_begin; it < it_end; it++)
+        for (const int *it = it_begin; it < it_end; ++it)
             if (int entries_32 = *it)
                 for (int bit_n = 0; bit_n < 32; bit_n++)
                     if (entries_32 & (1 << bit_n))

@@ -29,7 +29,7 @@ void netvar_tree::init()
 void netvar_tree::populate_nodes(RecvTable *recv_table, map_type *map)
 {
     map->clear();
-    for (auto i = 0; i < recv_table->GetNumProps(); i++)
+    for (auto i = 0; i < recv_table->GetNumProps(); ++i)
     {
         const auto *prop     = recv_table->GetProp(i);
         const auto prop_info = std::make_shared<node>(prop->GetOffset(), const_cast<RecvProp *>(prop));

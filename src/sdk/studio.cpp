@@ -1,11 +1,3 @@
-//========= Copyright Valve Corporation, All rights reserved. ============//
-//
-// Purpose:
-//
-// $NoKeywords: $
-//
-//=============================================================================//
-
 #include "studio.h"
 #include "datacache/idatacache.h"
 #include "datacache/imdlcache.h"
@@ -108,7 +100,7 @@ mstudioanim_t *mstudioanimdesc_t::pAnim(int *piFrame, float &flStall) const
     if (sectionframes != 0)
     {
         int count = (numframes / sectionframes) + 2;
-        for (int i = section + 1; i < count; i++)
+        for (int i = section + 1; i < count; ++i)
         {
             if (pSection(i)->animblock != block)
             {
@@ -552,7 +544,7 @@ int studiohdr_t::GetActivityListVersion(void)
     int version = activitylistversion;
 
     int i;
-    for (i = 1; i < pVModel->m_group.Count(); i++)
+    for (i = 1; i < pVModel->m_group.Count(); ++i)
     {
         virtualgroup_t *pGroup        = &pVModel->m_group[i];
         const studiohdr_t *pStudioHdr = pGroup->GetStudioHdr();
@@ -578,7 +570,7 @@ void studiohdr_t::SetActivityListVersion(int version) const
     Assert(pVModel);
 
     int i;
-    for (i = 1; i < pVModel->m_group.Count(); i++)
+    for (i = 1; i < pVModel->m_group.Count(); ++i)
     {
         virtualgroup_t *pGroup        = &pVModel->m_group[i];
         const studiohdr_t *pStudioHdr = pGroup->GetStudioHdr();
@@ -626,7 +618,7 @@ const mstudioiklock_t &studiohdr_t::pIKAutoplayLock(int i)
 int studiohdr_t::CountAutoplaySequences() const
 {
     int count = 0;
-    for (int i = 0; i < GetNumSeq(); i++)
+    for (int i = 0; i < GetNumSeq(); ++i)
     {
         mstudioseqdesc_t &seqdesc = pSeqdesc(i);
         if (seqdesc.flags & STUDIO_AUTOPLAY)
@@ -640,7 +632,7 @@ int studiohdr_t::CountAutoplaySequences() const
 int studiohdr_t::CopyAutoplaySequences(unsigned short *pOut, int outCount) const
 {
     int outIndex = 0;
-    for (int i = 0; i < GetNumSeq() && outIndex < outCount; i++)
+    for (int i = 0; i < GetNumSeq() && outIndex < outCount; ++i)
     {
         mstudioseqdesc_t &seqdesc = pSeqdesc(i);
         if (seqdesc.flags & STUDIO_AUTOPLAY)
@@ -738,7 +730,7 @@ void CStudioHdr::Init(const studiohdr_t *pStudioHdr, IMDLCache *mdlcache)
 
     m_boneFlags.EnsureCount(numbones());
     m_boneParent.EnsureCount(numbones());
-    for (int i = 0; i < numbones(); i++)
+    for (int i = 0; i < numbones(); ++i)
     {
         m_boneFlags[i]  = pBone(i)->flags;
         m_boneParent[i] = pBone(i)->parent;
@@ -778,7 +770,7 @@ const virtualmodel_t *CStudioHdr::ResetVModel(const virtualmodel_t *pVModel) con
         m_pStudioHdrCache.SetCount(m_pVModel->m_group.Count());
 
         int i;
-        for (i = 0; i < m_pStudioHdrCache.Count(); i++)
+        for (i = 0; i < m_pStudioHdrCache.Count(); ++i)
         {
             m_pStudioHdrCache[i] = NULL;
         }
@@ -1173,7 +1165,7 @@ int CStudioHdr::GetActivityListVersion(void)
     int version = m_pStudioHdr->activitylistversion;
 
     int i;
-    for (i = 1; i < m_pVModel->m_group.Count(); i++)
+    for (i = 1; i < m_pVModel->m_group.Count(); ++i)
     {
         const studiohdr_t *pStudioHdr = GroupStudioHdr(i);
         Assert(pStudioHdr);
@@ -1193,7 +1185,7 @@ void CStudioHdr::SetActivityListVersion(int version)
     }
 
     int i;
-    for (i = 1; i < m_pVModel->m_group.Count(); i++)
+    for (i = 1; i < m_pVModel->m_group.Count(); ++i)
     {
         const studiohdr_t *pStudioHdr = GroupStudioHdr(i);
         Assert(pStudioHdr);
@@ -1215,7 +1207,7 @@ int CStudioHdr::GetEventListVersion(void)
     int version = m_pStudioHdr->eventsindexed;
 
     int i;
-    for (i = 1; i < m_pVModel->m_group.Count(); i++)
+    for (i = 1; i < m_pVModel->m_group.Count(); ++i)
     {
         const studiohdr_t *pStudioHdr = GroupStudioHdr(i);
         Assert(pStudioHdr);
@@ -1235,7 +1227,7 @@ void CStudioHdr::SetEventListVersion(int version)
     }
 
     int i;
-    for (i = 1; i < m_pVModel->m_group.Count(); i++)
+    for (i = 1; i < m_pVModel->m_group.Count(); ++i)
     {
         const studiohdr_t *pStudioHdr = GroupStudioHdr(i);
         Assert(pStudioHdr);
@@ -1273,7 +1265,7 @@ const mstudioiklock_t &CStudioHdr::pIKAutoplayLock(int i)
 int	CStudioHdr::CountAutoplaySequences() const
 {
     int count = 0;
-    for (int i = 0; i < GetNumSeq(); i++)
+    for (int i = 0; i < GetNumSeq(); ++i)
     {
         mstudioseqdesc_t &seqdesc = pSeqdesc( i );
         if (seqdesc.flags & STUDIO_AUTOPLAY)
@@ -1287,7 +1279,7 @@ int	CStudioHdr::CountAutoplaySequences() const
 int	CStudioHdr::CopyAutoplaySequences( unsigned short *pOut, int outCount ) const
 {
     int outIndex = 0;
-    for (int i = 0; i < GetNumSeq() && outIndex < outCount; i++)
+    for (int i = 0; i < GetNumSeq() && outIndex < outCount; ++i)
     {
         mstudioseqdesc_t &seqdesc = pSeqdesc( i );
         if (seqdesc.flags & STUDIO_AUTOPLAY)
@@ -1339,31 +1331,20 @@ void CStudioHdr::RunFlexRules(const float *src, float *dest)
     int i, j;
 
     // FIXME: this shouldn't be needed, flex without rules should be stripped in studiomdl
-    for (i = 0; i < numflexdesc(); i++)
+    for (i = 0; i < numflexdesc(); ++i)
     {
         dest[i] = 0;
     }
 
-    for (i = 0; i < numflexrules(); i++)
+    for (i = 0; i < numflexrules(); ++i)
     {
         float stack[32]          = {};
         int k                    = 0;
         mstudioflexrule_t *prule = pFlexRule(i);
 
         mstudioflexop_t *pops = prule->iFlexOp(0);
-        /*
-                // JasonM hack for flex perf testing...
-                int nFlexRulesToRun = 0;								// 0 means run them all
-                const char *pszExpression = flex_maxrule.GetString();
-                if ( pszExpression )
-                {
-                    nFlexRulesToRun = atoi(pszExpression);				// 0 will be returned if not a numeric string
-                }
-                // end JasonM hack
-        //*/
-        // debugoverlay->AddTextOverlay( GetAbsOrigin() + Vector( 0, 0, 64 ), i + 1, 0, "%2d:%d\n", i, prule->flex );
 
-        for (j = 0; j < prule->numops; j++)
+        for (j = 0; j < prule->numops; ++j)
         {
             switch (pops->op)
             {
@@ -1711,7 +1692,7 @@ void CStudioHdr::CActivityToSequenceMapping::Initialize(CStudioHdr *__restrict p
                 (tupleList + element.startingIdx + tupleOffset)->pActivityModifiers    = new CUtlSymbol[seqdesc.numactivitymodifiers];
                 (tupleList + element.startingIdx + tupleOffset)->iNumActivityModifiers = seqdesc.numactivitymodifiers;
 
-                for (int k = 0; k < seqdesc.numactivitymodifiers; k++)
+                for (int k = 0; k < seqdesc.numactivitymodifiers; ++k)
                 {
                     (tupleList + element.startingIdx + tupleOffset)->pActivityModifiers[k] = g_ActivityModifiersTable.AddString(seqdesc.pActivityModifier(k)->pszName());
                 }

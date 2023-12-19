@@ -1,7 +1,3 @@
-//
-// Created by bencat07 on 28.09.18.
-//
-
 #include "common.hpp"
 #include "settings/Bool.hpp"
 #include "settings/Int.hpp"
@@ -12,6 +8,7 @@
 
 namespace hacks::misc_aimbot
 {
+
 constexpr float grav           = 0.25f;
 constexpr float initial_vel    = 200.0f;
 int prevent                    = -1;
@@ -20,11 +17,12 @@ static Timer previous_entity_delay{};
 // TODO: Refactor this jank
 std::pair<CachedEntity *, Vector> FindBestEnt(bool teammate, bool Predict, bool zcheck,  float range)
 {
+
     CachedEntity *bestent                             = nullptr;
     float bestscr                                     = FLT_MAX;
     Vector predicted{};
     // Too long since we focused it
-    if (previous_entity_delay.check(150))
+    if (previous_entity_delay.check(75))
         prevent = -1;
 
     for (int i = 0; i < 1; ++i)
@@ -89,32 +87,69 @@ std::pair<CachedEntity *, Vector> FindBestEnt(bool teammate, bool Predict, bool 
     }
     return { bestent, predicted };
 }
+
 static float slow_change_dist_y{};
 static float slow_change_dist_p{};
+
 void DoSlowAim(Vector &input_angle, float speed)
 {
     auto viewangles = current_user_cmd->viewangles;
 
-    // Don't bother if we're already on target (unlikely)
-    if (viewangles != input_angle) [[likely]]
+    // Yaw
+    if (viewangles.y != input_angle.y)
     {
-        Vector slow_delta = input_angle - viewangles;
+        float flChargeYawCap = re::CTFPlayerShared::CalculateChargeCap(re::CTFPlayerShared::GetPlayerShared(RAW_ENT(LOCAL_E)));
+        flChargeYawCap *= 2.5f;
 
-        slow_delta.y = std::fmod(slow_delta.y + 180.0f, 360.0f) - 180.0f;
+        // Check if input angle and user angle are on opposing sides of yaw so
+        // we can correct for that
+        bool slow_opposing = false;
+        if ((input_angle.y < -90 && viewangles.y > 90) || (input_angle.y > 90 && viewangles.y < -90))
+            slow_opposing = true;
 
-        slow_delta /= speed;
-        input_angle = viewangles + slow_delta;
+        // Direction
+        bool slow_dir = false;
+        if (slow_opposing)
+        {
+            if (input_angle.y > 90 && viewangles.y < -90)
+                slow_dir = true;
+        }
+        else if (viewangles.y > input_angle.y)
+            slow_dir = true;
 
-        // Clamp as we changed angles
-        fClampAngle(input_angle);
+        // Speed, check if opposing. We dont get a new distance due to the
+        // opposing sides making the distance spike, so just cheap out and reuse
+        // our last one.
+        if (!slow_opposing)
+            slow_change_dist_y = std::abs(viewangles.y - input_angle.y) / (int) speed;
+
+        // Move in the direction of the input angle
+        if (slow_dir)
+            input_angle.y = viewangles.y - slow_change_dist_y;
+        else
+            input_angle.y = viewangles.y + slow_change_dist_y;
     }
+
+    // Pitch
+    if (viewangles.x != input_angle.x)
+    {
+        // Get speed
+        slow_change_dist_p = std::abs(viewangles.x - input_angle.x) / speed;
+
+        // Move in the direction of the input angle
+        if (viewangles.x > input_angle.x)
+            input_angle.x = viewangles.x - slow_change_dist_p;
+        else
+            input_angle.x = viewangles.x + slow_change_dist_p;
+    }
+
+    // Clamp as we changed angles
+    fClampAngle(input_angle);
 }
 
 static void CreateMove()
 {
-
 }
-
 DetourHook CAM_CapYaw_detour;
 typedef float (*CAM_CapYaw_t)(IInput *, float);
 // Fix client side limit being applied weirdly, Note that most of this is taken from the source leak directly
@@ -139,7 +174,7 @@ float CAM_CapYaw_Hook(IInput *this_, float fVal)
     return fVal;
 }
 
-#define foffset(p, i) ((uint8_t *) &p)[i]
+#define foffset(p, i) ((unsigned char *) &p)[i]
 static InitRoutine init(
     []()
     {
@@ -152,4 +187,5 @@ static InitRoutine init(
         EC::Register(
             EC::Shutdown, []() { CAM_CapYaw_detour.Shutdown(); }, "chargeaim_shutdown");
     });
+
 } // namespace hacks::misc_aimbot

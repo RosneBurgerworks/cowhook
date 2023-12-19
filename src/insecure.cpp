@@ -10,8 +10,6 @@
 bool *allowSecureServers{ nullptr };
 void VACBypass()
 {
-    ((ICommandLine * (*) (void) ) dlsym(sharedobj::libtier0().lmap, "CommandLine_Tier0"))()->RemoveParm("-textmode");
-    ((ICommandLine * (*) (void) ) dlsym(sharedobj::libtier0().lmap, "CommandLine_Tier0"))()->RemoveParm("-insecure");
     uintptr_t Host_IsSecureServerAllowed_addr  = CSignature::GetEngineSignature("55 89 E5 83 EC ? E8 ? ? ? ? 8B 10 C7 44 24 ? ? ? ? ? 89 04 24 FF 52 ? 85 C0 74 ? C6 05");
     uintptr_t Host_IsSecureServerAllowed2_addr = CSignature::GetEngineSignature("55 89 E5 83 EC ? E8 ? ? ? ? 8B 10 C7 44 24 ? ? ? ? ? 89 04 24 FF 52 ? 85 C0 0F");
     static BytePatch HostSecureServer(Host_IsSecureServerAllowed_addr, { 0x55, 0x89, 0xE5, 0x83, 0xEC, 0x18, 0x31, 0xC0, 0x40, 0xC9, 0xC3 });

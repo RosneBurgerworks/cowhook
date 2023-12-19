@@ -19,7 +19,6 @@ void InitClassTable()
     if (!client_class_list)
     {
         logging::Info("FATAL: Cannot initialize class list! Game will crash if "
-                      "cathook is enabled.");
-        // cathook = false;
+                      "Rosnehook is enabled.");
     }
 }

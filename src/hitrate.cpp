@@ -1,12 +1,7 @@
-/*
- * hitrate.cpp
- *
- *  Created on: Aug 16, 2017
- *      Author: nullifiedcat
- */
-
 #include "common.hpp"
+#include <hacks/Aimbot.hpp>
 #include <settings/Bool.hpp>
+#include "MiscTemporary.hpp"
 #include "init.hpp"
 #include "AntiAntiAim.hpp"
 #include "hitrate.hpp"
@@ -35,11 +30,13 @@ CatCommand debug_hitrate("debug_hitrate", "Debug hitrate",
                              int p1 = 0;
                              int p2 = 0;
                              if (count_shots)
-                                 p1 = count_hits / count_shots * 100;
-
+                             {
+                                 p1 = float(count_hits) / float(count_shots) * 100.0f;
+                             }
                              if (count_hits)
-                                 p2 = count_hits_head / count_hits * 100;
-
+                             {
+                                 p2 = float(count_hits_head) / float(count_hits) * 100.0f;
+                             }
                              logging::Info("%d / %d (%d%%)", count_hits, count_shots, p1);
                              logging::Info("%d / %d (%d%%)", count_hits_head, count_hits_sniper, p2);
                          });
@@ -48,7 +45,9 @@ CatCommand debug_ammo("debug_ammo", "Debug ammo",
                       []()
                       {
                           for (int i = 0; i < 4; ++i)
+                          {
                               logging::Info("%d %d", i, CE_INT(LOCAL_E, netvar.m_iAmmo + i * 4));
+                          }
                       });
 
 // If this is true, Update() will consider increasing the brutenum soon if the shot was a miss
@@ -76,11 +75,13 @@ void OnHit(bool crit, int idx, bool is_sniper)
         count_hits_head++;
     if ((crit || aimbot_target_body) && idx == aimbot_target_idx)
     {
-        auto ent = ENTITY(idx);
-        if (CE_GOOD(ent))
         {
+            auto ent = ENTITY(idx);
+            if (CE_GOOD(ent))
+            {
             hacks::anti_anti_aim::resolver_map[ent->player_info->friendsID].hits_in_a_row++;
             resolve_soon[idx] = false;
+            }
         }
     }
 }
@@ -96,7 +97,7 @@ void Update()
 {
     CachedEntity *weapon = LOCAL_W;
     // Hitscan only
-    if (CE_GOOD(weapon) && GetWeaponMode() == weapon_hitscan)
+    if (CE_GOOD(weapon) && g_pLocalPlayer->weapon_mode == weapon_hitscan)
     {
         int ammo = CE_INT(LOCAL_E, netvar.m_iAmmo + 4);
         if (ammo < lastammo && !aimbot_shot.check(500) && !aimbot_target_idx)
@@ -134,7 +135,7 @@ void Update()
 class HurtListener : public IGameEventListener
 {
 public:
-    void FireGameEvent(KeyValues *event) override
+    virtual void FireGameEvent(KeyValues *event)
     {
         if (GetPlayerForUserID(event->GetInt("attacker")) == g_IEngine->GetLocalPlayer())
         {
@@ -142,7 +143,7 @@ public:
             {
                 OnHit(event->GetBool("crit"), event->GetInt("userid"), true);
             }
-            else if (CE_GOOD(LOCAL_W) && GetWeaponMode() == weapon_hitscan)
+            else if (CE_GOOD(LOCAL_W) && g_pLocalPlayer->weapon_mode == weapon_hitscan)
             {
                 OnHit(false, event->GetInt("userid"), false);
             }

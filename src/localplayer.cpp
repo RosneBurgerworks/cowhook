@@ -8,7 +8,12 @@
 #include "common.hpp"
 #include "AntiAim.hpp"
 
-
+CatCommand printfov("fov_print", "Dump achievements to file (development)",
+                    []()
+                    {
+                        if (CE_GOOD(LOCAL_E))
+                            logging::Info("%d", CE_INT(LOCAL_E, netvar.iFOV));
+                    });
 weaponmode GetWeaponModeloc()
 {
     int weapon_handle, weapon_idx, slot;
@@ -23,7 +28,7 @@ weaponmode GetWeaponModeloc()
         // logging::Info("IDX_BAD: %i", weapon_idx);
         return weaponmode::weapon_invalid;
     }
-    weapon = ENTITY(weapon_idx);
+    weapon = (ENTITY(weapon_idx));
     if (CE_BAD(weapon))
         return weaponmode::weapon_invalid;
     int classid = weapon->m_iClassID();
@@ -143,22 +148,21 @@ void LocalPlayer::Update()
                 weapon_melee_damage_tick = true;
                 melee_damagetick         = ULONG_MAX;
             }
-            else if (bAttackLastTick && static_cast<long long>(melee_damagetick) - static_cast<long long>(tickcount) < 0)
+            else if (bAttackLastTick && (long long) melee_damagetick - (long long) tickcount < 0)
                 // Thirteen ticks after attack detection = damage tick
                 melee_damagetick = tickcount + TIME_TO_TICKS(0.195f);
         }
         else
             melee_damagetick = 0;
     }
-    team                   = entity->m_iTeam();
-    flags                  = CE_INT(LOCAL_E, netvar.iFlags);
+    team                   = CE_INT(entity, netvar.iTeamNum);
     life_state             = CE_BYTE(entity, netvar.iLifeState);
     v_ViewOffset           = CE_VECTOR(entity, netvar.vViewOffset);
     v_Origin               = entity->m_vecOrigin();
     v_OrigViewangles       = current_user_cmd->viewangles;
     v_Eye                  = v_Origin + v_ViewOffset;
     clazz                  = CE_INT(entity, netvar.iClass);
-    health                 = entity->m_iHealth();
+    health                 = CE_INT(entity, netvar.iHealth);
     this->bUseSilentAngles = false;
     bZoomed                = HasCondition<TFCond_Zoomed>(entity);
     if (bZoomed)
@@ -167,8 +171,9 @@ void LocalPlayer::Update()
             flZoomBegin = g_GlobalVars->curtime;
     }
     else
+    {
         flZoomBegin = 0.0f;
-
+    }
     // Alive
     if (!life_state)
     {
@@ -176,16 +181,20 @@ void LocalPlayer::Update()
         for (const auto &ent: entity_cache::player_cache)
         {
             player_info_s info{};
-            if (!RAW_ENT(ent)->IsDormant() && ent != LOCAL_E && HandleToIDX(CE_INT(ent, netvar.hObserverTarget)) == LOCAL_E->m_IDX && GetPlayerInfo(ent->m_IDX, &info))
+            if (!CE_BAD(ent) && ent != LOCAL_E && ent->m_Type() == ENTITY_PLAYER && HandleToIDX(CE_INT(ent, netvar.hObserverTarget)) == LOCAL_E->m_IDX && GetPlayerInfo(ent->m_IDX, &info))
             {
                 switch (CE_INT(ent, netvar.iObserverMode))
                 {
                 default:
+                {
                     spectator_state = ANY;
                     break;
+                }
                 case OBS_MODE_IN_EYE:
+                {
                     spectator_state = FIRSTPERSON;
                     break;
+                }
                 }
             }
         }
@@ -201,7 +210,7 @@ void LocalPlayer::UpdateEnd()
 {
     if (!isFakeAngleCM)
         realAngles = current_user_cmd->viewangles;
-    bAttackLastTick = current_user_cmd->buttons & IN_ATTACK;
+    bAttackLastTick = (current_user_cmd->buttons & IN_ATTACK);
 }
 
 CachedEntity *LocalPlayer::weapon()

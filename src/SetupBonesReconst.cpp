@@ -130,3 +130,4 @@ bool SetupBones(IClientEntity *ent, matrix3x4_t *pBoneToWorld, int boneMask)
     return true;
 }
 } // namespace setupbones_reconst
+

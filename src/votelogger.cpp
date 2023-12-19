@@ -6,8 +6,9 @@
  */
 
 #include "common.hpp"
+#include "common.hpp"
 #include <boost/algorithm/string.hpp>
-#include <settings/Bool.hpp>
+#include <Bool.hpp>
 #include "Bot.hpp"
 #include "votelogger.hpp"
 
@@ -17,7 +18,7 @@ static settings::Boolean vote_rage_vote{ "votelogger.autovote.no.rage", "false" 
 static settings::Boolean chat{ "votelogger.chat", "true" };
 static settings::Boolean chat_partysay{ "votelogger.chat.partysay", "false" };
 static settings::Boolean chat_casts{ "votelogger.chat.casts", "false" };
-static settings::Boolean saywhenimkickingaskid{ "votelogger.kicksay", "false" };
+static settings::Boolean kickysay{ "votelogger.kicksay", "false" };
 static settings::Boolean chat_casts_f1_only{ "votelogger.chat.casts.f1-only", "true" };
 // Leave party and crash, useful VAC hosting
 static settings::Boolean abandon_and_crash_on_kick{ "votelogger.restart-on-kick", "false" };
@@ -80,7 +81,7 @@ void dispatchUserMessage(bf_read &buffer, int type)
         if (reason == 2) // VOTE_FAILED_RATE_EXCEEDED
             delay = cooldown;
 
-        hacks::catbot::timer_votekicks.last -= std::chrono::seconds(delay);
+        hacks::catbot::timer_votekicks -= Timer::sec_to_ms(delay);
         break;
     }
     case 46:
@@ -108,9 +109,9 @@ void dispatchUserMessage(bf_read &buffer, int type)
         logging::Info("[%s] Vote called to kick %s [U:1:%u] for %s by %s [U:1:%u]", team_name, info.name, info.friendsID, reason, info2.name, info2.friendsID);
         if (info.friendsID == g_ISteamUser->GetSteamID().GetAccountID())
         {
-            if (*saywhenimkickingaskid)
+            if (kickysay)
             {
-                chat_stack::Say("F2 I AM NOT A BOT!");
+                chat_stack::Say("Team plese push F2");
             }
             was_local_player = true;
             local_kick_timer.update();

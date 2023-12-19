@@ -1,5 +1,4 @@
-
-// #include <GL/glew.h>
+//#include <GL/glew.h>
 #include "visual/imgui/imgui_impl.h"
 #include "visual/drawing.hpp"
 #include "visual/imgui/imgui.h"
@@ -10,8 +9,8 @@
 
 static Uint64 g_Time                                      = 0;
 static bool g_MousePressed[3]                             = { false, false, false };
-static SDL_Cursor *g_MouseCursors[ImGuiMouseCursor_COUNT] = { nullptr };
-static char *g_ClipboardTextData                          = nullptr;
+static SDL_Cursor *g_MouseCursors[ImGuiMouseCursor_COUNT] = { 0 };
+static char *g_ClipboardTextData                          = NULL;
 
 void ImGui_Impl_Render(ImDrawData *draw_data)
 {
@@ -79,7 +78,7 @@ void ImGui_Impl_Render(ImDrawData *draw_data)
                                                      // are often (2,2)
 
     // Render command lists
-    for (int n = 0; n < draw_data->CmdListsCount; n++)
+    for (int n = 0; n < draw_data->CmdListsCount; ++n)
     {
         const ImDrawList *cmd_list   = draw_data->CmdLists[n];
         const ImDrawVert *vtx_buffer = cmd_list->VtxBuffer.Data;
@@ -198,6 +197,8 @@ bool ImGui_ImplSdl_ProcessEvent(SDL_Event *event)
 
 bool ImGui_Impl_CreateFontsTexture(ImFontAtlas *font)
 {
+    // Build texture atlas
+    ImGuiIO &io = ImGui::GetIO();
     unsigned char *pixels;
     int width, height;
     font->GetTexDataAsRGBA32(&pixels, &width,
@@ -232,9 +233,9 @@ void ImGui_Impl_DestroyFontsTexture(ImFontAtlas *font)
 {
     if (font)
     {
-        auto texture = (GLuint) font->TexID;
+        GLuint texture = (GLuint) font->TexID;
         glDeleteTextures(1, &texture);
-        font->TexID = nullptr;
+        font->TexID = 0;
     }
 }
 bool ImGui_ImplSdl_Init()
@@ -271,7 +272,7 @@ bool ImGui_ImplSdl_Init()
 
     io.SetClipboardTextFn = ImGui_ImplSdl_SetClipboardText;
     io.GetClipboardTextFn = ImGui_ImplSdl_GetClipboardText;
-    io.ClipboardUserData  = nullptr;
+    io.ClipboardUserData  = NULL;
 
     g_MouseCursors[ImGuiMouseCursor_Arrow]      = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
     g_MouseCursors[ImGuiMouseCursor_TextInput]  = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_IBEAM);
@@ -282,7 +283,7 @@ bool ImGui_ImplSdl_Init()
     g_MouseCursors[ImGuiMouseCursor_ResizeNWSE] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENWSE);
     g_MouseCursors[ImGuiMouseCursor_Hand]       = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
 
-    io.Fonts->AddFontFromFileTTF(paths::getDataPath("/fonts/tf2build.ttf").c_str(), 13, nullptr, io.Fonts->GetGlyphRangesDefault());
+    io.Fonts->AddFontFromFileTTF(paths::getDataPath("/fonts/tf2build.ttf").c_str(), 13, NULL, io.Fonts->GetGlyphRangesDefault());
     ImGuiFreeType::BuildFontAtlas(io.Fonts, 0x0);
     ImGui_Impl_CreateFontsTexture(io.Fonts);
 

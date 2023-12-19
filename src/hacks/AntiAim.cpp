@@ -1,10 +1,3 @@
-/*
- * AntiAim.cpp
- *
- *  Created on: Oct 26, 2016
- *      Author: nullifiedcat
- */
-
 #include <hacks/hacklist.hpp>
 #include <settings/Bool.hpp>
 #include <hacks/AntiAim.hpp>
@@ -14,9 +7,9 @@ namespace hacks::antiaim
 {
 bool force_fakelag = false;
 float used_yaw     = 0.0f;
-static settings::Boolean enable{ "antiaim.enable", "0" };
+static settings::Boolean enable{ "antiaim.enable", "false" };
 
-static settings::Boolean no_clamping{ "antiaim.no-clamp", "0" };
+static settings::Boolean no_clamping{ "antiaim.no-clamp", "false" };
 static settings::Float roll{ "antiaim.roll", "0" };
 static settings::Float spin{ "antiaim.spin-speed", "10" };
 
@@ -29,7 +22,7 @@ static settings::Float yaw_fake_static{ "antiaim.yaw.fake.static", "0" };
 static settings::Int yaw_real{ "antiaim.yaw.real", "0" };
 static settings::Float yaw_real_static{ "antiaim.yaw.real.static", "0" };
 
-static settings::Boolean aaaa_enable{ "antiaim.aaaa.enable", "0" };
+static settings::Boolean aaaa_enable{ "antiaim.aaaa.enable", "false" };
 static settings::Float aaaa_interval{ "antiaim.aaaa.interval.seconds", "0" };
 static settings::Float aaaa_interval_random_high{ "antiaim.aaaa.interval.random-high", "10" };
 static settings::Float aaaa_interval_random_low{ "antiaim.aaaa.interval.random-low", "2" };
@@ -38,7 +31,7 @@ static settings::Button aaaa_flip_key{ "antiaim.aaaa.flip-key", "<null>" };
 
 // Unused?
 static settings::Int yaw_sideways_min{ "antiaim.yaw.sideways.min", "0" };
-static settings::Int yaw_sideways_max{ "antiaim.yaw.sideways.max", "4" };
+static settings::Int yaw_sideways_max{ "antiaim.yaw.sideways.max", "0" };
 
 // Two values for fake and real angles
 float cur_yaw[2] = { 0.0f, 0.0f };
@@ -59,7 +52,7 @@ float GetAAAAPitch()
     case 1:
         return aaaa_stage ? 271 : 89;
     case 2:
-        return aaaa_stage ? -180 : 180;
+        return aaaa_stage ? -89 : 90;
     default:
         break;
     }
@@ -80,10 +73,7 @@ float GetAAAATimerLength()
 
 void NextAAAA()
 {
-    aaaa_stage++;
-    // TODO temporary..
-    if (aaaa_stage > 1)
-        aaaa_stage = 0;
+    aaaa_stage = (aaaa_stage + 1) % 3;
 }
 
 void UpdateAAAAKey()
@@ -147,24 +137,6 @@ void FuckPitch(float &io_pitch)
     constexpr float max_pitch = 149489.97f;
     // static FuckData_s fuck_data;
     static k_EFuckMode fuckmode = k_EFuckMode::FM_RANDOMVARS;
-    // static int fuckmode_ticks   = 0;
-
-    /*if (!fuckmode_ticks) {
-        fuckmode = rand() % k_EFuckMode::FM_COUNT;
-        fuckmode_ticks = rand() % 333;
-        switch (fuckmode) {
-        case k_EFuckMode::FM_INCREMENT:
-            fuck_data.fl1 = RandFloatRange(-400.0f, 400.0f);
-            fuck_data.i1 = rand() % 3;
-            break;
-        case k_EFuckMode::FM_JITTER:
-            fuck_data.fl1 = RandFloatRange(1.0f, 4.0f);
-            break;
-        case k_EFuckMode::FM_RANDOMVARS:
-            break;
-        }
-    }*/
-
     switch (fuckmode)
     {
     case k_EFuckMode::FM_RANDOMVARS:
@@ -227,8 +199,6 @@ void SendNetMessage(INetMessage &msg)
 
 bool ShouldAA(CUserCmd *cmd)
 {
-    if (cmd->buttons & IN_USE)
-        return false;
     int classid = LOCAL_W->m_iClassID();
     auto mode   = GetWeaponMode();
     if (!(classid == CL_CLASS(CTFCompoundBow) || mode == weapon_melee) && CanShoot() && (cmd->buttons & IN_ATTACK))
@@ -396,137 +366,140 @@ void ProcessUserCmd(CUserCmd *cmd)
         return;
     if (!ShouldAA(cmd))
         return;
-    if (!pitch_fake && !pitch_real && !yaw_fake && !yaw_real)
+        if (!pitch_fake && !pitch_real && !yaw_fake && !yaw_real)
         return;
-
+    
     static bool keepmode = true;
     keepmode             = !keepmode;
     float &p             = cmd->viewangles.x;
     float &y             = cmd->viewangles.y;
     static bool flip     = false;
     bool clamp           = !no_clamping;
-    bool yaw_mode        = true;
+    bool yaw_mode		 = true;
 
     static int ticksUntilSwap = 0;
     static bool swap          = true;
-
-    // Reset the ticks and swap for some reason...
+	
+	// Reset the ticks and swap for some reason...
     if (ticksUntilSwap > 0 && (*yaw_fake != 8 || *yaw_real != 8))
     {
         swap           = true;
         ticksUntilSwap = 0;
     }
+    
+   // Yaw logic
+if (g_pLocalPlayer->isFakeAngleCM) {
+    yaw_mode = false;
+}
 
-    // Yaw logic
-    if (g_pLocalPlayer->isFakeAngleCM)
-        yaw_mode = false;
-
-    switch ((int) (yaw_mode ? yaw_real : yaw_fake))
-    {
+	switch ((int) (yaw_mode ? yaw_real : yaw_fake))
+{
     case 1: // Custom
-        y = (float) (yaw_mode ? yaw_real_static : yaw_fake_static);
+        y = (float)(yaw_mode ? yaw_real_static : yaw_fake_static);
         break;
     case 2: // Custom Offset
-        y += (float) (yaw_mode ? yaw_real_static : yaw_fake_static);
+        y += (float)(yaw_mode ? yaw_real_static : yaw_fake_static);
         break;
     case 3: // Left
         y -= 90.0f;
         break;
-    case 4: // Right
+    case 4: // b1g random
+        y = RandFloatRange(-65536.0f, 65536.0f);
+        clamp = false;
+        break;
+    case 5: // Right
         y += 90.0f;
         break;
-    case 5: // Back
+    case 6: // Back
         y += 180.0f;
         break;
-    case 6: // Spin
-        cur_yaw[yaw_mode] += yaw_mode ? (float) spin : -((float) spin);
+    case 7: // Spin
+        cur_yaw[yaw_mode] += yaw_mode ? (float)spin : -(float)spin;
         while (cur_yaw[yaw_mode] > 180.0f)
             cur_yaw[yaw_mode] += -360.0f;
         while (cur_yaw[yaw_mode] < -180.0f)
             cur_yaw[yaw_mode] += 360.0f;
         y = cur_yaw[yaw_mode];
         break;
-    case 7: // Edge
+    case 8: // Edge
         // Attempt to find an edge and if found, rotate around it
         if (findEdge(y))
             y = useEdge(y);
         break;
-    case 8: // Sideways
+    case 9: // Sideways
         if (!yaw_mode)
             swap = !swap;
         y += swap ? 90.0f : -90.0f;
         break;
-    case 9: // Heck
+    case 10: // Heck
         FuckYaw(y);
         clamp = false;
         break;
-    case 10: // Omega
-        if (!yaw_mode)
-        {
+    case 11: // TestAA
+        if (!yaw_mode) {
             randyaw += RandFloatRange(-30.0f, 30.0f);
             y = randyaw;
-        }
-        else
+        } else {
             y = randyaw - 180.0f + RandFloatRange(-40.0f, 40.0f);
+        }
         break;
-    case 11: // Random
-        y     = RandFloatRange(-65536.0f, 65536.0f);
+    case 12: // Random
+        y = RandFloatRange(-65536.0f, 65536.0f);
         clamp = false;
         break;
-    case 12: // Random Clamped
+    case 13: // Random Clamped
         y = RandFloatRange(-180.0f, 180.0f);
         break;
     default:
         break;
-    }
+}
 
-    // Pitch logic
+     // Pitch logic
     switch (int(pitch_real))
     {
-    case 1: // Custom
-        p = float(pitch_static);
+    case 1:
+       p = *pitch_static;
         break;
-    case 2: // Up
-        p = -89.0f;
-        break;
-    case 3: // Down
-        p = 89.0f;
-        break;
-    case 4: // Jitter
+    case 2:
         if (flip)
             p += 30.0f;
         else
             p -= 30.0f;
         break;
-    case 5: // Random
+    case 3:
         p = RandFloatRange(-89.0f, 89.0f);
         break;
-    case 6: // Flip
+    case 4:
         p = flip ? 89.0f : -89.0f;
         break;
-    case 7: // Heck
+    case 5:
+        p     = flip ? 271.0f : -271.0f;
+        clamp = false;
+        break;
+    case 6:
+        p     = -271.0f;
+        clamp = false;
+        break;
+    case 7:
+        p     = 271.0f;
+        clamp = false;
+        break;
+    case 8:
+        p     = 360.0f;
+        clamp = false;
+        break;
+    case 9:
+        p = -89.0f;
+        break;
+    case 10:
+        p = 89.0f;
+        break;
+    case 11:
         FuckPitch(p);
         clamp = false;
     }
 
-    // Fake is done afterwards so that they can be applied on top of the real angles set above
-    switch (int(pitch_fake))
-    {
-    case 1: // Up
-        p -= 360.0f;
-        break;
-    case 2: // Down
-        p += 360.0f;
-        break;
-    case 3: // Inverse
-        if (p <= -89.0f)
-            p += 360.0f;
-        else if (p >= 89.0f)
-            p -= 360.0f;
-        break;
-    }
-
-    flip = !flip;
+	
     if (clamp)
         fClampAngle(cmd->viewangles);
     if (roll)

@@ -2,13 +2,13 @@
 
 pushd external/
 if [ ! -e boost-cmake ]; then
-git clone https://github.com/Runker45/boost-cmake
+git clone https://github.com/STEVE4git/boost-cmake.git
 fi
 if [ ! -e source-sdk-2013-headers ]; then
-git clone https://github.com/nullworks/source-sdk-2013-headers
+git clone https://github.com//RosneBurgerworks/source-sdk-2013-headers
 fi
 if [ ! -e libxoverlay ]; then
-git clone https://github.com/Runker45/libxoverlay
+git clone https://github.com//RosneBurgerworks/libxoverlay
 fi
 if [ ! -e TF2_NavFile_Reader ]; then
 git clone https://github.com/nullworks/TF2_NavFile_Reader

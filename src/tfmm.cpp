@@ -13,11 +13,15 @@
 static settings::Boolean auto_party{ "player-tools.set-party-state", "true" };
 settings::Int queue{ "autoqueue.mode", "7" };
 
-CatCommand cmd_queue_start("mm_queue_casual", "Start casual queue", []() { tfmm::StartQueue(); });
+CatCommand cmd_queue_start("mm_queue_casual", "Start casual queue", []() { tfmm::StartQueue(); 
+                             g_IEngine->ClientCmd_Unrestricted("cow_fastq");
+
+                                                                         });
 
 CatCommand queue_party("mm_queue_party", "Queue for Party",
                        []()
                        {
+                            g_IEngine->ClientCmd_Unrestricted("cow_fasq");
                            re::CTFPartyClient *client = re::CTFPartyClient::GTFPartyClient();
                            client->RequestQueueForStandby();
                        });

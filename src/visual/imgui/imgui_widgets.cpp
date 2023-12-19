@@ -1,32 +1,3 @@
-// dear imgui, v1.69 WIP
-// (widgets code)
-
-/*
-
-Index of this file:
-
-// [SECTION] Forward Declarations
-// [SECTION] Widgets: Text, etc.
-// [SECTION] Widgets: Main (Button, Image, Checkbox, RadioButton, ProgressBar, Bullet, etc.)
-// [SECTION] Widgets: Low-level Layout helpers (Spacing, Dummy, NewLine, Separator, etc.)
-// [SECTION] Widgets: ComboBox
-// [SECTION] Data Type and Data Formatting Helpers
-// [SECTION] Widgets: DragScalar, DragFloat, DragInt, etc.
-// [SECTION] Widgets: SliderScalar, SliderFloat, SliderInt, etc.
-// [SECTION] Widgets: InputScalar, InputFloat, InputInt, etc.
-// [SECTION] Widgets: InputText, InputTextMultiline
-// [SECTION] Widgets: ColorEdit, ColorPicker, ColorButton, etc.
-// [SECTION] Widgets: TreeNode, CollapsingHeader, etc.
-// [SECTION] Widgets: Selectable
-// [SECTION] Widgets: ListBox
-// [SECTION] Widgets: PlotLines, PlotHistogram
-// [SECTION] Widgets: Value helpers
-// [SECTION] Widgets: MenuItem, BeginMenu, EndMenu, etc.
-// [SECTION] Widgets: BeginTabBar, EndTabBar, etc.
-// [SECTION] Widgets: BeginTabItem, EndTabItem, etc.
-
-*/
-
 #if defined(_MSC_VER) && !defined(_CRT_SECURE_NO_WARNINGS)
 #define _CRT_SECURE_NO_WARNINGS
 #endif
@@ -3642,7 +3613,7 @@ bool ImGui::InputTextEx(const char *label, char *buf, int buf_size, const ImVec2
             // We ignore CTRL inputs, but need to allow ALT+CTRL as some keyboards (e.g. German) use AltGR (which _is_ Alt+Ctrl) to input certain characters.
             bool ignore_inputs = (io.KeyCtrl && !io.KeyAlt) || (is_osx && io.KeySuper);
             if (!ignore_inputs && !is_readonly && !user_nav_input_start)
-                for (int n = 0; n < io.InputQueueCharacters.Size; n++)
+                for (int n = 0; n < io.InputQueueCharacters.Size; ++n)
                 {
                     // Insert character if they pass filtering
                     unsigned int c = (unsigned int) io.InputQueueCharacters[n];
@@ -3787,8 +3758,6 @@ bool ImGui::InputTextEx(const char *label, char *buf, int buf_size, const ImVec2
                 {
                     unsigned int c;
                     s += ImTextCharFromUtf8(&c, s, NULL);
-                    if (c == 0)
-                        break;
                     if (c >= 0x10000 || !InputTextFilterCharacter(&c, flags, callback, callback_user_data))
                         continue;
                     clipboard_filtered[clipboard_filtered_len++] = (ImWchar) c;

@@ -48,7 +48,7 @@ CEconItemView *CTFPlayerInventory::GetItem(int idx)
 std::vector<unsigned long long> CTFPlayerInventory::GetItemsOfItemDef(int id)
 {
     std::vector<unsigned long long> uuid_vec;
-    for (int i = 0; i < this->GetItemCount(); i++)
+    for (int i = 0; i < this->GetItemCount(); ++i)
     {
         auto item = this->GetItem(i);
         if (item->GetDefinitionIndex() == id)
@@ -169,7 +169,7 @@ bool Craft(std::vector<int> item_ids)
         return false;
 
     // Add items
-    for (int i = 0; i < item_UUIDs.size(); i++)
+    for (int i = 0; i < item_UUIDs.size(); ++i)
     {
         panel.m_InputItems[i] = item_UUIDs[i];
     }

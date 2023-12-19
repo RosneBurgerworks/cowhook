@@ -1,21 +1,17 @@
-/*
- * trace.cpp
- *
- *  Created on: Oct 10, 2016
- *      Author: nullifiedcat
- */
-
 #include "common.hpp"
 
 // This file is a mess. I need to fix it. TODO
 
 /* Default Filter */
+
 trace::FilterDefault::FilterDefault()
 {
     m_pSelf = nullptr;
 }
 
-trace::FilterDefault::~FilterDefault() = default;
+trace::FilterDefault::~FilterDefault()
+{
+}
 
 void trace::FilterDefault::SetSelf(IClientEntity *self)
 {
@@ -45,6 +41,7 @@ bool trace::FilterDefault::ShouldHitEntity(IHandleEntity *handle, int mask)
         return false;
     // Sniper rifles can shoot through teammates!
     case CL_CLASS(CTFPlayer):
+    {
         if (m_pSelf)
         {
             // If what we hit is an enemy it does not matter
@@ -54,7 +51,7 @@ bool trace::FilterDefault::ShouldHitEntity(IHandleEntity *handle, int mask)
                 if (CE_GOOD(ent) && ent->m_bAlivePlayer())
                 {
                     // Get held weapon
-                    auto weapon_idx = HandleToIDX(CE_INT(ent, netvar.hActiveWeapon));
+                    auto weapon_idx = HandleToIDX(CE_INT(ent, netvar.hActiveWeapon)); 
                     // Check if weapon is valid
                     if (IDX_GOOD(weapon_idx))
                     {
@@ -68,6 +65,7 @@ bool trace::FilterDefault::ShouldHitEntity(IHandleEntity *handle, int mask)
         }
         break;
     }
+    }
     /* Do not hit yourself. Idiot. */
     if (entity == m_pSelf)
         return false;
@@ -80,12 +78,13 @@ TraceType_t trace::FilterDefault::GetTraceType() const
 }
 
 /* No-Player filter */
+
 trace::FilterNoPlayer::FilterNoPlayer()
 {
     m_pSelf = nullptr;
 }
 
-trace::FilterNoPlayer::~FilterNoPlayer() = default;
+trace::FilterNoPlayer::~FilterNoPlayer(){};
 
 void trace::FilterNoPlayer::SetSelf(IClientEntity *self)
 {
@@ -130,9 +129,10 @@ TraceType_t trace::FilterNoPlayer::GetTraceType() const
 }
 
 /* Navigation filter */
-trace::FilterNavigation::FilterNavigation() = default;
 
-trace::FilterNavigation::~FilterNavigation() = default;
+trace::FilterNavigation::FilterNavigation(){};
+
+trace::FilterNavigation::~FilterNavigation(){};
 
 #define MOVEMENT_COLLISION_GROUP 8
 #define RED_CONTENTS_MASK 0x800
@@ -169,12 +169,13 @@ TraceType_t trace::FilterNavigation::GetTraceType() const
 }
 
 /* No-Entity filter */
+
 trace::FilterNoEntity::FilterNoEntity()
 {
     m_pSelf = nullptr;
 }
 
-trace::FilterNoEntity::~FilterNoEntity() = default;
+trace::FilterNoEntity::~FilterNoEntity(){};
 
 void trace::FilterNoEntity::SetSelf(IClientEntity *self)
 {
@@ -213,19 +214,20 @@ TraceType_t trace::FilterNoEntity::GetTraceType() const
 {
     return TRACE_EVERYTHING;
 }
-
 /* Penetration Filter */
 trace::FilterPenetration::FilterPenetration()
 {
     m_pSelf = nullptr;
 }
 
-trace::FilterPenetration::~FilterPenetration() = default;
+trace::FilterPenetration::~FilterPenetration(){};
 
 void trace::FilterPenetration::SetSelf(IClientEntity *self)
 {
     if (self == nullptr)
+    {
         logging::Info("nullptr in FilterPenetration::SetSelf");
+    }
     m_pSelf = self;
 }
 
@@ -267,7 +269,7 @@ TraceType_t trace::FilterPenetration::GetTraceType() const
 
 void trace::FilterPenetration::Reset()
 {
-    m_pIgnoreFirst = nullptr;
+    m_pIgnoreFirst = 0;
 }
 
 trace::FilterDefault trace::filter_default{};

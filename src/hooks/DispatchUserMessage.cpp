@@ -136,11 +136,11 @@ DEFINE_HOOKED_METHOD(DispatchUserMessage, bool, void *this_, int type, bf_read &
                 if (anti_balance_attempts < 2)
                 {
                     ignoredc = true;
-                    g_IEngine->ClientCmd_Unrestricted("killserver;wait 100;cat_mm_join");
+                    g_IEngine->ClientCmd_Unrestricted("retry");
                 }
                 else
                 {
-                    std::string autobalance_msg = "tf_party_chat \"[ROSNEHOOK] autobalanced in 3 seconds";
+                    std::string autobalance_msg = "tf_party_chat \"[COWHOOK] autobalanced in 3 seconds";
                     if (ipc::peer && ipc::peer->connected)
                         autobalance_msg += format(" IPC ID ", ipc::peer->client_id, "\"");
                     else
@@ -158,7 +158,7 @@ DEFINE_HOOKED_METHOD(DispatchUserMessage, bool, void *this_, int type, bf_read &
         if (s >= 256 || CE_BAD(LOCAL_E))
             break;
 
-        for (i = 0; i < s; i++)
+        for (i = 0; i < s; ++i)
             data.push_back(buf_data[i]);
         /* First byte is player ENT index
          * Second byte is unidentified (equals to 0x01)
@@ -209,7 +209,7 @@ DEFINE_HOOKED_METHOD(DispatchUserMessage, bool, void *this_, int type, bf_read &
                 break;
             }
 
-            std::vector<std::string> res = { "skid", "script", "cheat", "hak", "hac", "f1", "hax", "vac", "ban", "bot", "report", "kick", "hcak", "chaet", "one" };
+            std::vector<std::string> res = { "bot", "Kick" };
             if (claz)
                 res.emplace_back(claz);
 
@@ -222,13 +222,13 @@ DEFINE_HOOKED_METHOD(DispatchUserMessage, bool, void *this_, int type, bf_read &
             const char *toreplace[]   = { " ", "4", "3", "0", "6", "5", "7", "@", ".", ",", "-" };
             const char *replacewith[] = { "", "a", "e", "o", "g", "s", "t", "a", "", "", "" };
 
-            for (int i = 0; i < 7; i++)
+            for (int i = 0; i < 7; ++i)
                 boost::replace_all(message2, toreplace[i], replacewith[i]);
 
             for (const auto &filter : res)
                 if (boost::contains(message2, filter))
                 {
-                    chat_stack::Say("I am not a bot.", true); // omega tonic
+                    chat_stack::Say("I am not a ◌๎bot.", true);
                     retrun     = true;
                     lastfilter = message;
                     lastname   = format(name);
@@ -262,7 +262,7 @@ DEFINE_HOOKED_METHOD(DispatchUserMessage, bool, void *this_, int type, bf_read &
                 msg.push_back(c);
             else
             {
-                logging::Info("[%d] %s", i++, msg.c_str());
+                logging::Info("[%d] %s", ++i, msg.c_str());
                 msg.clear();
             }
         }

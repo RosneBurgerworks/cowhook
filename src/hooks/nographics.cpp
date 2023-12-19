@@ -1,10 +1,3 @@
-/*
- * nographics.cpp
- *
- *  Created on: Aug 1, 2017
- *      Author: nullifiedcat
- */
-
 #include "common.hpp"
 
 #if !ENABLE_TEXTMODE
@@ -59,7 +52,6 @@ void RemoveNullHook()
 }
 static CatCommand ApplyNullhook("debug_material_hook", "Debug", []() { NullHook(); });
 static CatCommand RemoveNullhook("debug_material_hook_clear", "Debug", []() { RemoveNullHook(); });
-static settings::Boolean debug_framerate("debug.framerate", "false");
 static float framerate = 0.0f;
 static Timer send_timer{};
 static InitRoutine init_nographics(
@@ -72,8 +64,6 @@ static InitRoutine init_nographics(
             EC::Paint,
             []()
             {
-                if (!*debug_framerate)
-                    return;
                 framerate = 0.9 * framerate + (1.0 - 0.9) * g_GlobalVars->absoluteframetime;
                 if (send_timer.test_and_set(1000))
                     logging::Info("FPS: %f", 1.0f / framerate);

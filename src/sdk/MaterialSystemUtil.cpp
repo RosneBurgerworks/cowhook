@@ -1,11 +1,3 @@
-//========= Copyright Valve Corporation, All rights reserved. ============//
-//
-// Purpose:
-//
-// $Workfile:     $
-// $NoKeywords: $
-//===========================================================================//
-
 #include "materialsystem/MaterialSystemUtil.h"
 #include "materialsystem/imaterial.h"
 #include "materialsystem/itexture.h"

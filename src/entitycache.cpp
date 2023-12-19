@@ -1,3 +1,10 @@
+/*
+ * entitycache.cpp
+ *
+ *  Created on: Nov 7, 2016
+ *      Author: nullifiedcat
+ */
+
 #include "common.hpp"
 #include <settings/Float.hpp>
 #include "soundcache.hpp"

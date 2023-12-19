@@ -1,11 +1,3 @@
-//========= Copyright Valve Corporation, All rights reserved. ============//
-//
-// $Header: $
-// $NoKeywords: $
-//
-// Serialization buffer
-//===========================================================================//
-
 #pragma warning(disable : 4514)
 
 #include "utlbuffer.h"

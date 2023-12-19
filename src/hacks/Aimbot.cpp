@@ -7,11 +7,11 @@
 
 #include <hacks/Aimbot.hpp>
 #include <hacks/AntiAim.hpp>
+#include <hacks/ESP.hpp>
 #include <hacks/Backtrack.hpp>
 #include <PlayerTools.hpp>
 #include <settings/Bool.hpp>
 #include "common.hpp"
-#include <targethelper.hpp>
 #include "MiscTemporary.hpp"
 #include "hitrate.hpp"
 #include "Warp.hpp"
@@ -34,9 +34,9 @@ static settings::Boolean wait_for_charge{ "aimbot.wait-for-charge", "false" };
 static settings::Boolean silent{ "aimbot.silent", "true" };
 static settings::Boolean target_lock{ "aimbot.lock-target", "false" };
 #if ENABLE_VISUALS
+static settings::Boolean assistance_only{ "aimbot.assistance.only", "false" };
 static settings::Boolean fov_draw{ "aimbot.fov-circle.enable", "0" };
 static settings::Float fovcircle_opacity{ "aimbot.fov-circle.opacity", "0.7" };
-static settings::Boolean assistance_only{ "aimbot.assistance.only", "false" };
 #endif
 static settings::Int hitbox{ "aimbot.hitbox", "0" };
 static settings::Boolean zoomed_only{ "aimbot.zoomed-only", "true" };
@@ -53,7 +53,7 @@ static settings::Float zoom_distance{ "aimbot.zoom.distance", "2000.0" };
 static settings::Boolean backtrack_aimbot{ "aimbot.backtrack", "false" };
 static settings::Boolean backtrack_last_tick_only("aimbot.backtrack.only-last-tick", "true");
 static bool force_backtrack_aimbot = false;
-// wtf is this above
+
 static settings::Boolean target_hazards{ "aimbot.target.hazards", "true" };
 static settings::Float max_range{ "aimbot.target.max-range", "4096" };
 static settings::Boolean ignore_vaccinator{ "aimbot.target.ignore-vaccinator", "false" };
@@ -368,7 +368,6 @@ void DoAutoZoom(bool target_found, CachedEntity *target)
         return;
     }
 
-    // zoom distance
     auto nearest = hacks::NavBot::getNearestPlayerDistance();
     if (g_pLocalPlayer->holding_sniper_rifle && !AllowNoScope(target) && (target_found || nearest.second <= *zoom_distance))
     {
@@ -570,6 +569,7 @@ CachedEntity *RetrieveBestTarget(bool aimkey_state)
     last_target_ignore_timer = 0;
 
     // Do not attempt to target hazards using melee weapons
+    // Competitive maps do not have any hazards
     if (*target_hazards && GetWeaponMode() != weapon_melee && !TFGameRules()->m_bCompetitiveMode)
     {
         for (const auto &pEntity : entity_cache::valid_ents)
@@ -647,8 +647,6 @@ CachedEntity *RetrieveBestTarget(bool aimkey_state)
         {
             switch (*priority_mode)
             {
-            case 0: // Smart Priority
-                score = static_cast<float>(GetScoreForEntity(ent));
                 break;
             case 1: // Fov Priority
                 score = 360.0f - cd.fov;
@@ -852,6 +850,10 @@ bool Aim(CachedEntity *entity)
     if (slow_aim != 0)
         DoSlowAim(angles);
 
+#if ENABLE_VISUALS
+    if (entity->m_Type() == ENTITY_PLAYER)
+        hacks::esp::SetEntityColor(entity, colors::target);
+#endif
     // Set angles
     current_user_cmd->viewangles = angles;
 
@@ -871,27 +873,30 @@ bool Aim(CachedEntity *entity)
 }
 
 // A function to check whether player can autoshoot
-bool began_charge = false;
+bool begancharge = false;
 void DoAutoshoot(CachedEntity *target_entity)
 {
+    bool attack = true;
     // Enable check
     if (!*autoshoot)
         return;
-    bool attack = true;
-
+    // Check if we can shoot, ignore during rapidfire (special case for minigun: we can shoot 24/7 just dont aim, idk why this works)
+    if (*only_can_shoot && !CanShoot() && !hacks::warp::in_rapidfire && LOCAL_W->m_iClassID() != CL_CLASS(CTFMinigun))
+        return;
     // Rifle check
     if (g_pLocalPlayer->holding_sniper_rifle && *zoomed_only && !CanHeadshot() && !AllowNoScope(target_entity))
         attack = false;
     // Autoshoot breaks with Slow aimbot, so use a workaround to detect when it can
-    else if (slow_aim != 0 && !slow_can_shoot)
+    if (slow_aim && !slow_can_shoot)
         attack = false;
-    // Don't autoshoot without anything in clip
-    else if (CE_INT(LOCAL_W, netvar.m_iClip1) == 0)
+
+    // Dont autoshoot without anything in clip
+    if (CE_INT(g_pLocalPlayer->weapon(), netvar.m_iClip1) == 0)
         attack = false;
 
     if (attack)
     {
-        // TO DO: Sending both reload and attack will activate the Hitman's Heatmaker ability
+        // TO DO: Sending both reload and attack will activate the hitmans heatmaker ability
         // Don't activate it only on first kill (or somehow activate it before a shot)
         current_user_cmd->buttons |= IN_ATTACK | (*autoreload && CarryingHeatmaker() ? IN_RELOAD : 0);
         if (target_entity)
@@ -905,7 +910,7 @@ void DoAutoshoot(CachedEntity *target_entity)
         current_user_cmd->buttons |= IN_ATTACK2;
 }
 
-// this is important
+// Grab a vector for a specific ent
 Vector PredictEntity(CachedEntity *entity)
 {
     // Pull out predicted data

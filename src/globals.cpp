@@ -48,7 +48,7 @@ CUserCmd *current_late_user_cmd{ nullptr };
 
 bool isHackActive()
 {
-    return !settings::cathook_disabled.load() && *global_enable;
+    return !settings::  cathook_disabled.load() && *global_enable;
 }
 
 GlobalSettings g_Settings{};

@@ -7,7 +7,7 @@
 
 #include <settings/Int.hpp>
 #include "common.hpp"
-// #include "SetupBonesReconst.hpp"
+#include "SetupBonesReconst.hpp"
 
 namespace hitbox_cache
 {
@@ -32,6 +32,7 @@ void EntityHitboxCache::Init()
         if (!set)
             return;
         m_pLastModel   = const_cast<model_t *>(model);
+        m_nNumHitboxes = 0;
         m_nNumHitboxes = set->numhitboxes;
 
         if (m_nNumHitboxes > CACHE_MAX_HITBOXES)
@@ -61,12 +62,12 @@ bool EntityHitboxCache::VisibilityCheck(int id)
     // Bitmask works sort of like an index in our case. 1 would be the first bit, and we are shifting this by id to get our index
     uint_fast64_t mask = 1ULL << id;
     // No branch conditional set https://graphics.stanford.edu/~seander/bithacks.html#ConditionalSetOrClearBitsWithoutBranching
-    m_VisCheck = (m_VisCheck & ~mask) | (-validation & mask);
+    m_VisCheck = m_VisCheck & ~mask | -validation & mask;
     m_VisCheckValidationFlags |= 1ULL << id;
     return m_VisCheck >> id & 1;
 }
-
-static settings::Int setupbones_time{ "source.setupbones-time", "2" };
+// ONG 2 IS THE BEST HITS SO MUCH P
+static settings::Int setupbones_time{ "source.setupbones-time", "2" }; 
 
 void EntityHitboxCache::UpdateBones()
 {
@@ -96,9 +97,9 @@ void EntityHitboxCache::UpdateBones()
     }
 
     // Mark for update
-    /*int *entity_flags = (int *) ((uintptr_t) RAW_ENT(parent_ref) + 400);
-    // (EFL_DIRTY_SURROUNDING_COLLISION_BOUNDS | EFL_DIRTY_SPATIAL_PARTITION)
-    *entity_flags |= (1 << 14) | (1 << 15);*/
+    //*int *entity_flags = (int *) ((uintptr_t) RAW_ENT(parent_ref) + 400);
+    //(EFL_DIRTY_SURROUNDING_COLLISION_BOUNDS | EFL_DIRTY_SPATIAL_PARTITION)
+    //*entity_flags |= (1 << 14) | (1 << 15);*/
 }
 
 matrix3x4_t *EntityHitboxCache::GetBones(int numbones)
@@ -141,10 +142,9 @@ matrix3x4_t *EntityHitboxCache::GetBones(int numbones)
         if (g_Settings.is_create_move)
         {
 
-            // Only use reconstructed setupbones on players
-            /*if (parent_ref->m_Type() == ENTITY_PLAYER)
-                bones_setup = setupbones_reconst::SetupBones(RAW_ENT(parent_ref), bones.data(), 0x7FF00);
-            else*/
+            // ALSO, WHAT IN THE NAME OF GOD IS 0x7FF00 !?!?!?!?!?!?!?!? WHY IS THIS USED INSTEAD OF BONE_USED_BY_HITBOX ENUM BUILT INTO THE SDK >?!?!?!?!?!? !?!?!?!? !? !?!?!
+            // WHATEVER, ALL (PUBLIC) CHEATS USE THIS RANDOM SIGNED BINARY PIECE OF SHIT, SO THEY CANT BE WRONG (RIGHT!?!?!?!)
+            // I NEED MENTAL HELP WITH THIS FAGGOT CATHOOK CODE
             bones_setup = RAW_ENT(parent_ref)->SetupBones(bones.data(), numbones, BONE_USED_BY_HITBOX, bones_setup_time);
         }
     }

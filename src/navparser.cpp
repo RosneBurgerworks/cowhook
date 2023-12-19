@@ -18,13 +18,13 @@ static settings::Boolean draw("nav.draw", "false");
 static settings::Boolean look{ "nav.look-at-path", "false" };
 static settings::Boolean draw_debug_areas("nav.draw.debug-areas", "false");
 static settings::Boolean log_pathing{ "nav.log", "false" };
-static settings::Int stuck_time{ "nav.stuck-time", "800" };
+static settings::Int stuck_time{ "nav.stuck-time", "750" };
 static settings::Int vischeck_cache_time{ "nav.vischeck-cache.time", "240" };
 static settings::Boolean vischeck_runtime{ "nav.vischeck-runtime.enabled", "true" };
 static settings::Int vischeck_time{ "nav.vischeck-runtime.delay", "2000" };
-static settings::Int stuck_detect_time{ "nav.anti-stuck.detection-time", "1" };
+static settings::Int stuck_detect_time{ "nav.anti-stuck.detection-time", "6" };
 // How long until accumulated "Stuck time" expires
-static settings::Int stuck_expire_time{ "nav.anti-stuck.expire-time", "10" };
+static settings::Int stuck_expire_time{ "nav.anti-stuck.expire-time", "5" };
 // How long we should blacklist the node after being stuck for too long?
 static settings::Int stuck_blacklist_time{ "nav.anti-stuck.blacklist-time", "120" };
 static settings::Int sticky_ignore_time{ "nav.ignore.sticky-time", "15" };
@@ -438,7 +438,10 @@ bool isReady()
         return false;
 
     std::string level_name = GetLevelName();
-    return *enabled && map && map->state == NavState::Active && (level_name == "plr_pipeline" || TFGameRules()->State_Get() > CGameRules::GR_STATE_PREROUND);
+    return *enabled && map && map->state == NavState::Active && (level_name == "plr_pipeline" || TFGameRules()->State_Get() > CGameRules::GR_STATE_PREROUND) &&
+           !(g_pLocalPlayer->team == TEAM_BLU && (TFGameRules()->InSetup() ||
+                                                  // FIXME: If we're on a control point map, and blue is the attacking team, then the gates are closed, so we shouldn't path
+                                                  (TFGameRules()->IsInWaitingForPlayers() && (level_name.starts_with("pl_") || level_name.starts_with("cp_")))));
 }
 
 bool isPathing()
@@ -647,45 +650,38 @@ static void followCrumbs()
     // 1. No jumping if zoomed (or revved)
     // 2. Jump if it's necessary to do so based on z values
     // 3. Jump if stuck (not getting closer) for more than stuck_time/2
-    if ((!(g_pLocalPlayer->holding_sniper_rifle && g_pLocalPlayer->bZoomed) && !(g_pLocalPlayer->bRevved || g_pLocalPlayer->bRevving) && (crouch || crumbs[0].vec.z - g_pLocalPlayer->v_Origin.z > 18.0f) && last_jump.check(200)) || (last_jump.check(200) && inactivity.check(*stuck_time / 2)))
-    {
+if ((!(g_pLocalPlayer->holding_sniper_rifle && g_pLocalPlayer->bZoomed) && !(g_pLocalPlayer->bRevved || g_pLocalPlayer->bRevving) || crumbs[0].vec.z - g_pLocalPlayer->v_Origin.z > 18.0f) && last_jump.check(200) && inactivity.check(*stuck_time / 2))    {
         auto local = map->findClosestNavSquare(g_pLocalPlayer->v_Origin);
         // Check if current area allows jumping
         if (!local || !(local->m_attributeFlags & (NAV_MESH_NO_JUMP | NAV_MESH_STAIRS)))
         {
             // Make it crouch until we land, but jump the first tick
-            current_user_cmd->buttons |= crouch ? IN_DUCK : IN_JUMP;
+            current_user_cmd->buttons |=    IN_JUMP;
 
-            // Only flip to crouch state, not to jump state
-            if (!crouch)
-            {
-                crouch           = true;
-                ticks_since_jump = 0;
-            }
-            ticks_since_jump++;
 
-            // Update jump timer now since we are back on ground
-            if (crouch && g_pLocalPlayer->flags & FL_ONGROUND && ticks_since_jump > 3)
+
+
             {
                 // Reset
-                crouch = false;
                 last_jump.update();
             }
         }
     }
 
-    // Look at path (nav spin) (smooth nav)
-    if (*look && !hacks::aimbot::IsAiming())
+
+// Look at path
+    if (look && !hacks::aimbot::IsAiming())
     {
         Vector next{ crumbs[0].vec.x, crumbs[0].vec.y, g_pLocalPlayer->v_Eye.z };
         next = GetAimAtAngles(g_pLocalPlayer->v_Eye, next);
-        static int aim_speed = 25; // how smooth nav is
-        // activate nav spin and smoothen
+        static int wait_time = 5;
+        static int aim_speed = 9;
+         // Slow aim to smoothen
         hacks::misc_aimbot::DoSlowAim(next, aim_speed);
-        current_user_cmd->viewangles = next, aim_speed;
+        current_user_cmd->viewangles = next;
     }
 
-    WalkTo(current_vec);
+    WalkTo(crumbs[0].vec);
 }
 
 static Timer vischeck_timer{};
@@ -801,12 +797,20 @@ static void CreateMove()
     if (!isReady())
         return;
 
-    if (CE_BAD(LOCAL_E) || !LOCAL_E->m_bAlivePlayer())
+        if (CE_BAD(LOCAL_E) || !LOCAL_E->m_bAlivePlayer())
     {
         cancelPath();
         return;
     }
-    
+
+    // Still in setup If on fitting team, do not path yet
+    std::string level_name = GetLevelName();
+if (g_pLocalPlayer->team == TEAM_BLU && (g_pGameRules->m_bInSetup && level_name != "plr_pipeline" && (level_name.starts_with("pl_") || level_name.starts_with("cp_"))))    {
+        if (navparser::NavEngine::isPathing())
+            navparser::NavEngine::cancelPath();
+        return;
+    }
+
     if (*vischeck_runtime)
         vischeckPath();
     checkBlacklist();
@@ -929,7 +933,7 @@ void Draw()
             {
                 Vector end_pos = crumbs[i + 1].vec;
                 if (draw::WorldToScreen(end_pos, end_screen))
-                    draw::Line(start_screen.x, start_screen.y, end_screen.x - start_screen.x, end_screen.y - start_screen.y, colors::RainbowCurrent(), 2.0f);
+                    draw::Line(start_screen.x, start_screen.y, end_screen.x - start_screen.x, end_screen.y - start_screen.y, colors::white, 1.0f);
             }
         }
     }

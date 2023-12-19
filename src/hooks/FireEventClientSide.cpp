@@ -5,10 +5,6 @@
 
 #include "HookedMethods.hpp"
 
-namespace hacks::killstreak
-{
-extern void fire_event(IGameEvent *event);
-}
 namespace hooked_methods
 {
 
@@ -61,7 +57,6 @@ DEFINE_HOOKED_METHOD(FireEventClientSide, bool, IGameEventManager2 *this_, IGame
             spam_messages_since_reset++;
         }
     }
-    hacks::killstreak::fire_event(event);
     return original::FireEventClientSide(this_, event);
 }
 } // namespace hooked_methods

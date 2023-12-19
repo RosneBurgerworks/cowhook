@@ -1,16 +1,7 @@
-/*
-  Created by Jenny White on 29.04.18.
-  Copyright (c) 2018 nullworks. All rights reserved.
-*/
-
 #include <settings/String.hpp>
 #include "HookedMethods.hpp"
 #include "PlayerTools.hpp"
 
-static settings::String ipc_name{ "name.ipc", "" };
-std::string name_forced;
-
-static std::string stolen_name;
 
 int getRng(int min, int max)
 {

@@ -58,13 +58,10 @@ void DrawCheatVisuals()
     {
         if (*info_text)
         {
-        std::string name_s, reason_s;
-        {
             auto color = colors::orange;
             AddSideString("COWHOOK.FUN", color);
-        }
-        }
-    }
+          } 
+      }
     if (spectator_target)
         AddCenterString("Press SPACE to stop spectating");
 

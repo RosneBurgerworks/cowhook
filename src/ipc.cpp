@@ -62,7 +62,7 @@ CatCommand connect("ipc_connect", "Connect to IPC server",
                            StoreClientData();
                            Heartbeat();
                            // Load a config depending on id
-                           hack::command_stack().push("exec cow_autoexec_ipc_" + std::to_string(peer->client_id % std::max(1, *bot_chunks)));
+                           hack::command_stack().push("exec cat_autoexec_ipc_" + std::to_string(peer->client_id % std::max(1, *bot_chunks)));
                        }
                        catch (std::exception &error)
                        {
@@ -178,7 +178,7 @@ CatCommand exec_sync("ipc_sync_all", "Sync's certain variable (on every peer)",
 
                          if (args.ArgC() < 3)
                          {
-                             g_ICvar->ConsoleColorPrintf(MENU_COLOR, "Usage: cow_ipc_sync_all <variable> <value 1>.\n");
+                             g_ICvar->ConsoleColorPrintf(MENU_COLOR, "Usage: cat_ipc_sync_all <variable> <value 1>.\n");
                              return;
                          }
 
@@ -193,14 +193,14 @@ CatCommand exec_sync("ipc_sync_all", "Sync's certain variable (on every peer)",
                              return;
                          }
 
-                         std::string command = std::string("cow set ") + args.ArgS();
+                         std::string command = std::string("cat set ") + args.ArgS();
 
                          if (command.length() >= 63)
                          {
                              /* this could probaly be put in a function
                                  it loops trough all IPC bots and ignores the local player. */
 
-                             for (unsigned i = 0; i < peer->memory->peer_count; i++)
+                             for (unsigned i = 0; i < peer->memory->peer_count; ++i)
                              {
                                  if (!peer->memory->peer_data[i].free)
                                  {
@@ -216,7 +216,7 @@ CatCommand exec_sync("ipc_sync_all", "Sync's certain variable (on every peer)",
                          else
                          {
                              {
-                                 for (unsigned i = 0; i < peer->memory->peer_count; i++)
+                                 for (unsigned i = 0; i < peer->memory->peer_count; ++i)
                                  {
                                      if (!peer->memory->peer_data[i].free)
                                      {
@@ -256,7 +256,7 @@ CatCommand debug_get_ingame_ipc("ipc_debug_dump_server", "Show other bots on ser
                                     }
                                     int count = 0;
                                     std::vector<unsigned> botlist{};
-                                    for (unsigned i = 0; i < cat_ipc::max_peers; i++)
+                                    for (unsigned i = 0; i < cat_ipc::max_peers; ++i)
                                     {
                                         if (!ipc::peer->memory->peer_data[i].free)
                                         {
@@ -297,7 +297,6 @@ void update_mapname()
     user_data_s &data = peer->memory->peer_user_data[peer->client_id];
     strncpy(data.ingame.mapname, GetLevelName().c_str(), sizeof(data.ingame.mapname));
 }
-float framerate = 0.0f;
 void UpdateTemporaryData()
 {
     user_data_s &data = peer->memory->peer_user_data[peer->client_id];
@@ -310,7 +309,8 @@ void UpdateTemporaryData()
 
     if (data.connected)
     {
-        IClientEntity *player = g_IEntityList->GetClientEntity(g_IEngine->GetLocalPlayer());
+        int localplayer = g_IEngine->GetLocalPlayer();
+        IClientEntity *player = g_IEntityList->GetClientEntity(localplayer);
         if (player)
         {
             data.ingame.good = true;
@@ -318,11 +318,11 @@ void UpdateTemporaryData()
 
             int score_saved = data.ingame.score;
 
-            data.ingame.score      = g_pPlayerResource->GetScore(g_IEngine->GetLocalPlayer());
-            data.ingame.team       = g_pPlayerResource->GetTeam(g_IEngine->GetLocalPlayer());
-            data.ingame.role       = g_pPlayerResource->GetClass(LOCAL_E);
+            data.ingame.score      = g_pPlayerResource->GetScore(localplayer);
+            data.ingame.team       = g_pPlayerResource->GetTeam(localplayer);
+            data.ingame.role       = g_pPlayerResource->GetClass(localplayer);
             data.ingame.life_state = NET_BYTE(player, netvar.iLifeState);
-            data.ingame.health     = NET_INT(player, netvar.iHealth);
+            data.ingame.health     = g_pPlayerResource->GetHealth(LOCAL_E);
             data.ingame.health_max = g_pPlayerResource->GetMaxHealth(LOCAL_E);
 
             if (score_saved > data.ingame.score)
@@ -378,7 +378,7 @@ void UpdatePlayerlist()
 {
     if (peer && ipc_update_list)
     {
-        for (unsigned i = 0; i < cat_ipc::max_peers; i++)
+        for (unsigned i = 0; i < cat_ipc::max_peers; ++i)
         {
             if (!peer->memory->peer_data[i].free)
             {
@@ -436,9 +436,9 @@ static int cat_completionCallback(const char *c_partial, char commands[COMMAND_C
             if (variable)
             {
                 if (s.compare(parts.at(0)))
-                    snprintf(commands[count++], COMMAND_COMPLETION_ITEM_LENGTH - 1, "cow_ipc_sync_all %s", s.c_str());
+                    snprintf(commands[count++], COMMAND_COMPLETION_ITEM_LENGTH - 1, "cat_ipc_sync_all %s", s.c_str());
                 else
-                    snprintf(commands[count++], COMMAND_COMPLETION_ITEM_LENGTH - 1, "cow_ipc_sync_all %s %s", s.c_str(), variable->toString().c_str());
+                    snprintf(commands[count++], COMMAND_COMPLETION_ITEM_LENGTH - 1, "cat_ipc_sync_all %s %s", s.c_str(), variable->toString().c_str());
                 if (count == COMMAND_COMPLETION_MAXITEMS)
                     break;
             }

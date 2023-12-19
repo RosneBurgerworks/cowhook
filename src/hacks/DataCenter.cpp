@@ -107,7 +107,6 @@ static CatCommand force_refersh("fastq", "Force refresh of ping data", Refresh);
 static void OnRegionsUpdate(std::string regions)
 {
     CidStr_t region;
-
     regionsSet.clear();
 
     std::vector<std::string> regions_vec;
@@ -124,6 +123,8 @@ static void OnRegionsUpdate(std::string regions)
         region.fill(0);
         std::strcpy(region.data(), region_str.c_str());
         regionsSet.emplace(region);
+        g_ICvar->ConsoleColorPrintf(MENU_COLOR, "[cowhook]: Fast Queue Enabled\n");
+
     }
     if (*enable)
         Refresh();

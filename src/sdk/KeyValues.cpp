@@ -1,11 +1,3 @@
-//========= Copyright Valve Corporation, All rights reserved. ============//
-//
-// Purpose:
-//
-// $NoKeywords: $
-//
-//=============================================================================//
-
 #if defined(_WIN32) && !defined(_X360)
 #include <windows.h> // for WideCharToMultiByte and MultiByteToWideChar
 #elif defined(POSIX)
@@ -97,7 +89,7 @@ public:
         bool bSpewCR = false;
 
         Warning("KeyValues Error: %s in file %s\n", pError, m_pFilename);
-        for (int i = 0; i < m_maxErrorIndex; i++)
+        for (int i = 0; i < m_maxErrorIndex; ++i)
         {
             if (i < MAX_ERROR_STACK && m_errorStack[i] != INVALID_KEY_SYMBOL)
             {
@@ -197,7 +189,7 @@ public:
     void RemoveKv(KeyValues *kv)
     {
         int c = keys.Count();
-        for (int i = 0; i < c; i++)
+        for (int i = 0; i < c; ++i)
         {
             if (keys[i].kv == kv)
             {
@@ -775,7 +767,7 @@ bool KeyValues::SaveToFile(IBaseFileSystem *filesystem, const char *resourceName
 //-----------------------------------------------------------------------------
 void KeyValues::WriteIndents(IBaseFileSystem *filesystem, FileHandle_t f, CUtlBuffer *pBuf, int indentLevel)
 {
-    for (int i = 0; i < indentLevel; i++)
+    for (int i = 0; i < indentLevel; ++i)
     {
         INTERNALWRITE("\t", 1);
     }
@@ -792,7 +784,7 @@ void KeyValues::WriteConvertedString(IBaseFileSystem *filesystem, FileHandle_t f
     int len               = Q_strlen(pszString);
     char *convertedString = (char *) _alloca((len + 1) * sizeof(char) * 2);
     int j                 = 0;
-    for (int i = 0; i <= len; i++)
+    for (int i = 0; i <= len; ++i)
     {
         if (pszString[i] == '\"')
         {
@@ -2058,7 +2050,7 @@ void KeyValues::AppendIncludedKeys(CUtlVector<KeyValues *> &includedKeys)
     // Append any included keys, too...
     KeyValues *insertSpot = this;
     int includeCount      = includedKeys.Count();
-    for (int i = 0; i < includeCount; i++)
+    for (int i = 0; i < includeCount; ++i)
     {
         KeyValues *kv = includedKeys[i];
         Assert(kv);
@@ -2140,7 +2132,7 @@ void KeyValues::MergeBaseKeys(CUtlVector<KeyValues *> &baseKeys)
 {
     int includeCount = baseKeys.Count();
     int i;
-    for (i = 0; i < includeCount; i++)
+    for (i = 0; i < includeCount; ++i)
     {
         KeyValues *kv = baseKeys[i];
         Assert(kv);
@@ -2516,7 +2508,7 @@ void KeyValues::RecursiveLoadFromBuffer(char const *resourceName, CUtlBuffer &bu
                 // an 18-byte value prefixed with "0x" (followed by 16 hex
                 // digits) is an int64 value
                 int64 retVal = 0;
-                for (int i = 2; i < 2 + 16; i++)
+                for (int i = 2; i < 2 + 16; ++i)
                 {
                     char digit = value[i];
                     if (digit >= 'a')

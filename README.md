@@ -1,42 +1,26 @@
-# cowhook from 10/29/23
+# Cowhook
 
-## Getting Started with Cowhook on Linux
+## Leak of Cowhook, dated 15/12/23.
 
-Cowhook is a versatile cheat for enhancing your Team Fortress 2 (TF2) gaming experience on Linux. This comprehensive guide will walk you through the process of downloading, installing, and effectively utilizing Cowhook on your system.
-Dependencies
+If you wish to boast about your "improvements" and also call other actual talented coders in this community "pasters" while also stealing off said people's code, you should fully expect what is going to come your way.
 
-While not mandatory, it is highly recommended to install the dialog package for an enhanced user interface.
+## Credits to:
 
-All other essential dependencies will be automatically handled by the dependencycheck script.
-Downloading
+- Riley
+- Platinumchao (LawlessCherry)
+- Rosne (because most of this is pasted from his fork)
+- COSSINCREW'
 
-Begin by opening a terminal window and executing the following command to obtain Cowhook:
+# How to use bad paste?
+Run this command to clone:  
+`git clone https://github.com/RileyKun/cowhook`
 
-```shell
+To build, run:  
+`./build`
 
-git clone https://github.com/cowhookdev/cathook
-cd cathook
-./install-all
+To inject, run:  
+`sudo ./attach`
 
-# This command sequence will initiate the download and create the cathook directory, housing all necessary source files.
- Injecting
-
-To seamlessly integrate Cowhook into your TF2 gameplay, run the subsequent command while inside the source folder:
-
-```shell
-
-sudo ./attach
-
-# This action will inject the libcathook.so library into the hl2_linux process.
-
-Once successfully injected, you can access the menu by simply pressing the INSERT key.
-
-## FAQ
-
-How do I open the menu?
-You can access the menu by pressing the INSERT key while your TF2 window is in focus.
-
-Where is my configuration file saved?
-Your configuration files are securely stored within the cathook folder, conveniently located in your /opt directory (/opt/cathook/data). These configuration files are presented in a human-readable format and can be easily edited using your preferred text editor.
-
-Embrace the power of Cowhook and elevate your Team Fortress 2 gameplay to new heights!
+# Closing notes
+I wouldn't try and strike this repo, as the original source you're forking from is licensed under GNU-GPL and is not your own original code.  
+Keep trying to call explowz's fork trash and trying to make PRs removing perfectly working features. The immaturity you show within those PRs are very funny to look at.
