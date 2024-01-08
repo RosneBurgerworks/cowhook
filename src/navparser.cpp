@@ -674,8 +674,8 @@ if ((!(g_pLocalPlayer->holding_sniper_rifle && g_pLocalPlayer->bZoomed) && !(g_p
     {
         Vector next{ crumbs[0].vec.x, crumbs[0].vec.y, g_pLocalPlayer->v_Eye.z };
         next = GetAimAtAngles(g_pLocalPlayer->v_Eye, next);
-        static int wait_time = 5;
-        static int aim_speed = 9;
+        static int wait_time = 0;
+        static int aim_speed = 8;
          // Slow aim to smoothen
         hacks::misc_aimbot::DoSlowAim(next, aim_speed);
         current_user_cmd->viewangles = next;

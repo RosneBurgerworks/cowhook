@@ -1158,7 +1158,7 @@ static slots getBestSlot(slots active_slot, std::pair<CachedEntity *, float> &ne
         {
             if (nearest.second <= *melee_range && nearest.first->m_bAlivePlayer() && nearest.first->IsVisible())
                 return melee;
-            else if (nearest.second <= 300)
+                if (nearest.second <= 200.0f && IsPlayerInvulnerable(nearest.first))
                 return active_slot;
             else
                 return primary;

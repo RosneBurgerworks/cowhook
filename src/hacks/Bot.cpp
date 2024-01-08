@@ -29,10 +29,11 @@ static settings::Int micspam_off{ "cat-bot.micspam.interval-off", "0" };
 
 static settings::Boolean auto_crouch{ "cat-bot.auto-crouch", "false" };
 static settings::Boolean always_crouch{ "cat-bot.always-crouch", "false" };
-static settings::Boolean autovote_map{ "cat-bot.autovote-map", "true" };
+static settings::Boolean random_votekicks{ "cat-bot.votekicks", "false" };
+static settings::Boolean autovote_map{ "cat-bot.autovote-map", "false" };
 
 settings::Boolean catbotmode{ "cat-bot.enable", "true" }; // i forgur :troll:
-settings::Boolean anti_motd{ "cat-bot.anti-motd", "true" }; // may reduces lag idk
+settings::Boolean anti_motd{ "cat-bot.anti-motd", "false" }; // may reduces lag idk
 
 void do_random_votekick()
 {
@@ -306,7 +307,10 @@ void update()
         }
     }
 
-   
+    if (*random_votekicks && timer_votekicks.test_and_set(5000))
+    {
+        do_random_votekick();
+    }
 
     if (timer_abandon.test_and_set(2000) && level_init_timer.check(13000))
     {
@@ -396,7 +400,7 @@ void update()
                     ipc_blacklist.clear();
 
                     logging::Info("Requeuing because there are %d local players in game, and requeue_if_ipc_bots_gte is %d.", count_ipc, *requeue_if_ipc_bots_gte);
-                    tfmm::Abandon();
+                    tfmm::StartQueue();
                     return;
                 }
                 else
@@ -431,7 +435,7 @@ void update()
             if (count_total - count_ipc <=  *requeue_if_humans_lte)
             {
                 logging::Info("Abandoning because there are %d non-bots in game, and requeue_if_humans_lte is %d.", count_total - count_ipc, *requeue_if_humans_lte);
-                tfmm::Abandon();
+                tfmm::StartQueue();
                 return;
             }
         }
@@ -440,7 +444,7 @@ void update()
             if (count_total <= *requeue_if_players_lte)
             {
                 logging::Info("Requeuing because there are %d total players in game, and requeue_if_players_lte is %d.", count_total, *requeue_if_players_lte);
-                tfmm::Abandon();
+                tfmm::StartQueue();
                 return;
             }
         }

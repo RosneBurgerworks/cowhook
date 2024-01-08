@@ -10,13 +10,14 @@
 
 #include <cstdint>
 #include <dirent.h>
+#include <boost/algorithm/string.hpp>
 
 namespace playerlist
 {
 std::unordered_map<unsigned, userdata> data{};
 
-const std::string k_Names[]                                     = { "DEFAULT", "FRIEND", "RAGE", "IPC", "TEXTMODE", "CAT",  "ABUSE", "PARTY" };
-const char *const k_pszNames[]                                  = { "DEFAULT", "FRIEND", "RAGE", "IPC", "TEXTMODE", "CAT",  "ABUSE", "PARTY" };
+const std::string k_Names[]                                     = { "DEFAULT", "FRIEND", "RAGE", "IPC", "TEXTMODE", "CAT", "ABUSE", "PARTY" };
+const char *const k_pszNames[]                                  = { "DEFAULT", "FRIEND", "RAGE", "IPC", "TEXTMODE", "CAT", "ABUSE", "PARTY" };
 const std::array<std::pair<k_EState, size_t>, 5> k_arrGUIStates = { std::pair(k_EState::DEFAULT, 0), { k_EState::FRIEND, 1 }, { k_EState::RAGE, 2 } };
 #if ENABLE_VISUALS
 std::array<rgba_t, 8> k_Colors = { colors::empty, colors::FromRGBA8(99, 226, 161, 255), colors::FromRGBA8(226, 204, 99, 255), colors::FromRGBA8(232, 134, 6, 255), colors::FromRGBA8(232, 134, 6, 255), colors::empty, colors::FromRGBA8(150, 75, 0, 255), colors::FromRGBA8(99, 226, 161, 255) };
@@ -25,7 +26,7 @@ std::array<rgba_t, 8> k_Colors = { colors::empty, colors::FromRGBA8(99, 226, 161
 static bool ShouldSave(const userdata &data)
 {
 #if ENABLE_VISUALS
-    return data.color || data.state == k_EState::FRIEND || data.state == k_EState::RAGE  || data.state == k_EState::ABUSE;
+    return data.color || data.state == k_EState::FRIEND || data.state == k_EState::RAGE || data.state == k_EState::ABUSE;
 #endif
     return data.state == k_EState::FRIEND || data.state == k_EState::RAGE || data.state == k_EState::ABUSE;
 }
@@ -281,7 +282,7 @@ static void pl_cleanup()
 
 CatCommand pl_clean("pl_clean", "Removes empty entries to reduce RAM usage", pl_cleanup);
 
-CatCommand pl_set_state("pl_set_state", "cat_pl_set_state [playername] [state] (Tab to autocomplete)",
+CatCommand pl_set_state("pl_set_state", "cow_pl_set_state [playername] [state] (Tab to autocomplete)",
                         [](const CCommand &args)
                         {
                             if (args.ArgC() != 3)
@@ -311,7 +312,7 @@ CatCommand pl_set_state("pl_set_state", "cat_pl_set_state [playername] [state] (
                                 return;
                             }
                             std::string state = args.Arg(2);
-                            std::transform(state.begin(), state.end(), state.begin(), [](unsigned char c) { return std::toupper(c); });
+                            boost::to_upper(state);
                             player_info_s info{};
                             GetPlayerInfo(id, &info);
 
@@ -327,7 +328,7 @@ CatCommand pl_set_state("pl_set_state", "cat_pl_set_state [playername] [state] (
                             logging::Info("Unknown State %s. (Use tab for autocomplete)", state.c_str());
                         });
 
-static int cat_pl_set_state_completionCallback(const char *c_partial, char commands[COMMAND_COMPLETION_MAXITEMS][COMMAND_COMPLETION_ITEM_LENGTH])
+static int cow_pl_set_state_completionCallback(const char *c_partial, char commands[COMMAND_COMPLETION_MAXITEMS][COMMAND_COMPLETION_ITEM_LENGTH])
 {
     std::string partial = c_partial;
     std::string parts[2]{};
@@ -355,7 +356,7 @@ static int cat_pl_set_state_completionCallback(const char *c_partial, char comma
 
     std::vector<std::string> names;
 
-    for (int i = 1; i <= g_GlobalVars->maxClients; i++)
+    for (int i = 1; i <= g_GlobalVars->maxClients; ++i)
     {
         player_info_s info{};
         if (!GetPlayerInfo(i, &info))
@@ -366,36 +367,29 @@ static int cat_pl_set_state_completionCallback(const char *c_partial, char comma
             name.begin(), name.end(), [](char x) { return !isprint(x); }, '*');
         names.push_back(name);
     }
-
     std::sort(names.begin(), names.end());
 
     if (parts[0].empty() || (parts[1].empty() && (!parts[0].empty() && partial.back() != ' ')))
     {
-        std::transform(parts[0].begin(), parts[0].end(), parts[0].begin(), [](unsigned char c) { return std::tolower(c); });
-        for (const auto &name : names)
+        boost::to_lower(parts[0]);
+        for (const auto &s : names)
         {
-            std::string lowercaseName;
-            std::transform(name.begin(), name.end(), std::back_inserter(lowercaseName), [](unsigned char c) { return std::tolower(c); });
-            if (lowercaseName.find(parts[0]) == 0)
+            // if (s.find(parts[0]) == 0)
+            if (boost::to_lower_copy(s).find(parts[0]) == 0)
             {
-                snprintf(commands[count++], COMMAND_COMPLETION_ITEM_LENGTH - 1, "cat_pl_set_state %s", name.c_str());
+                snprintf(commands[count++], COMMAND_COMPLETION_ITEM_LENGTH - 1, "cow_pl_set_state %s", s.c_str());
             }
         }
         return count;
     }
-
-    std::transform(parts[1].begin(), parts[1].end(), parts[1].begin(), [](unsigned char c) { return std::tolower(c); });
-    for (const auto &name : k_Names)
+    boost::to_lower(parts[1]);
+    for (const auto &s : k_Names)
     {
-        std::string lowercaseName;
-        std::transform(name.begin(), name.end(), std::back_inserter(lowercaseName), [](unsigned char c) { return std::tolower(c); });
-        if (lowercaseName.find(parts[1]) == 0)
+        if (boost::to_lower_copy(s).find(parts[1]) == 0)
         {
-            snprintf(commands[count++], COMMAND_COMPLETION_ITEM_LENGTH - 1, "cat_pl_set_state %s %s", parts[0].c_str(), name.c_str());
+            snprintf(commands[count++], COMMAND_COMPLETION_ITEM_LENGTH - 1, "cow_pl_set_state %s %s", parts[0].c_str(), s.c_str());
             if (count == COMMAND_COMPLETION_MAXITEMS)
-            {
                 break;
-            }
         }
     }
     return count;
@@ -456,6 +450,6 @@ static InitRoutine init(
     []()
     {
         pl_set_state.cmd->m_bHasCompletionCallback = true;
-        pl_set_state.cmd->m_fnCompletionCallback   = cat_pl_set_state_completionCallback;
+        pl_set_state.cmd->m_fnCompletionCallback   = cow_pl_set_state_completionCallback;
     });
 } // namespace playerlist

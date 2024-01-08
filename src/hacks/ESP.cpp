@@ -1,10 +1,3 @@
-/*
- * ESP.cpp
- *
- *  Created on: Oct 6, 2016
- *      Author: nullifiedcat
- */
-
 #include <hacks/ESP.hpp>
 #include <PlayerTools.hpp>
 #include <settings/Bool.hpp>
@@ -262,7 +255,7 @@ const std::string taunting_str       = "TAUNT";
 const std::string revving_str        = "REV";
 const std::string drawn_str          = "DRAWN";
 const std::string slowed_str         = "SLOWDOWN";
-const std::string zooming_str        = "ZOOMED";
+const std::string zooming_str        = "*ZOOMED*";
 const std::string crit_str           = "CRITS";
 const std::string blast_p_str        = "BLAST RESIST";
 const std::string blast_a_str        = "BLAST RESIST CHARGE";
@@ -1379,6 +1372,7 @@ void BoxCorners(int minx, int miny, int maxx, int maxy, const rgba_t &color, boo
     // Bottom Right
     draw::Line(maxx - 1, maxy - 2, -widthSize, 0, color, 0.5f);
     draw::Line(maxx - 1, maxy - 2, 0, -heightSize, color, 0.5f);
+
 }
 
 // Used for caching collidable bounds
@@ -1395,7 +1389,7 @@ bool GetCollide(CachedEntity *ent)
     if (!ent_data.has_collide)
     {
 
-        // Get collision center, max, and mins
+ // Get collision center, max, and mins
         Vector origin = RAW_ENT(ent)->GetCollideable()->GetCollisionOrigin();
         // Dormant
         if (RAW_ENT(ent)->IsDormant())
@@ -1458,7 +1452,6 @@ bool GetCollide(CachedEntity *ent)
             if (point.y < min_y)
                 min_y = point.y;
         }
-
         // Save the info to the esp data and notify cached that we cached info.
         ent_data.collide_max = Vector(max_x, max_y, 0);
         ent_data.collide_min = Vector(min_x, min_y, 0);

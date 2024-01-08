@@ -1,8 +1,17 @@
 #!/usr/bin/env bash
+pushd external/
+rm -rf boost-cmake
+rm -rf source-sdk-2013-headers
+rm -rf libxoverlay
+rm -rf TF2_NavFile_Reader
+rm -rf clip
+rm -rf MicroPather
+rm -rf simple-ipc
+popd
 
 pushd external/
 if [ ! -e boost-cmake ]; then
-git clone https://github.com/STEVE4git/boost-cmake.git
+git clone https://github.com/RosneBurgerworks/boost-cmake.git
 fi
 if [ ! -e source-sdk-2013-headers ]; then
 git clone https://github.com//RosneBurgerworks/source-sdk-2013-headers

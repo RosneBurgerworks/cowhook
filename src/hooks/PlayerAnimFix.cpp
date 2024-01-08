@@ -36,11 +36,13 @@ float FrameAdvance_hook(IClientEntity *self, float flInterval)
                 CE_FLOAT(ent, netvar.m_flAnimTime) = g_GlobalVars->curtime;
         }
     }
+
     auto original      = (FrameAdvance_t) frameadvance_detour.GetOriginalFunc();
     float return_value = original(self, newInterval);
     frameadvance_detour.RestorePatch();
     return return_value;
 }
+
 bool ShouldInterpolate_hook(IClientEntity *ent)
 {
     if (enabled)
@@ -60,10 +62,27 @@ bool ShouldInterpolate_hook(IClientEntity *ent)
     return ret;
 }
 
+// We need a non-crashing way to implement this. Currently, it will just cause crashes
+// due to race conditions that we cannot resolve
+/*std::mutex threadsafe_mutex;
+
+void CheckForSequenceChange_hook(int *_this, int *studiohdr, int sequence, bool forcenewsequence, bool bInterpolate)
+{
+    bInterpolate       = false;
+    auto new_studiohdr = studiohdr;
+    if (enabled)
+        new_studiohdr = nullptr;
+
+    std::lock_guard<std::mutex> checkforsequencechance_mutex(threadsafe_mutex);
+    auto original = (CheckForSequenceChange_t) checkforsequencechange_detour.GetOriginalFunc();
+    original(_this, new_studiohdr, sequence, forcenewsequence, bInterpolate);
+    checkforsequencechange_detour.RestorePatch();
+}*/
+
 void LevelInit()
 {
     previous_simtimes.clear();
-    previous_simtimes.resize(g_IEngine->GetMaxClients());
+    previous_simtimes.resize(g_GlobalVars->maxClients);
 }
 
 static InitRoutine init(
@@ -71,7 +90,10 @@ static InitRoutine init(
     {
         static auto ShouldInterpolate_signature = CSignature::GetClientSignature("55 89 E5 56 53 83 EC 10 A1 ? ? ? ? 8B 5D ? 8B 10 89 04 24 FF 52 ? 8B 53");
         shouldinterpolate_detour.Init(ShouldInterpolate_signature, (void *) ShouldInterpolate_hook);
-        
+
+        /*static auto CheckForSequenceChange_signature = CSignature::GetClientSignature("55 89 E5 57 56 53 83 EC 1C 8B 45 ? 8B 75 ? 8B 4D ? 8B 7D");
+         checkforsequencechange_detour.Init(CheckForSequenceChange_signature, (void *) CheckForSequenceChange_hook);*/
+
         static auto FrameAdvance_signature = CSignature::GetClientSignature("55 89 E5 57 56 53 83 EC 4C 8B 5D ? 80 BB ? ? ? ? 00 0F 85 ? ? ? ? 8B B3");
         frameadvance_detour.Init(FrameAdvance_signature, (void *) FrameAdvance_hook);
         EC::Register(EC::LevelInit, LevelInit, "levelinit_animfix");

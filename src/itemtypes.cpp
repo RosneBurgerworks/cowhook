@@ -6,19 +6,19 @@
 
 #include "common.hpp"
 
-unsigned long Hash::String(const char *pszOrg)
+unsigned long Hash::String(const char *szOrg)
 {
-    unsigned long iHash = 5381;
+    int iHash = 5381;
 
-    while (int iStr = static_cast<unsigned char>(*pszOrg++))
+    while (int iStr = *szOrg++)
         iHash = iHash * 33 ^ iStr;
 
     return iHash;
 }
 
-bool Hash::IsHealth(const char *pszName)
+bool Hash::IsHealth(const char *szName)
 {
-    switch (String(pszName))
+    switch (String(szName))
     {
     case MedKitSmall:
     case MedKitMedium:
@@ -44,9 +44,9 @@ bool Hash::IsHealth(const char *pszName)
     }
 }
 
-bool Hash::IsAmmo(const char *pszName)
+bool Hash::IsAmmo(const char *szName)
 {
-    switch (String(pszName))
+    switch (String(szName))
     {
     case AmmoSmall:
     case AmmoMedium:
@@ -59,9 +59,9 @@ bool Hash::IsAmmo(const char *pszName)
     }
 }
 
-bool Hash::IsCrumpkin(const char *pszName)
+bool Hash::IsCrumpkin(const char *szName)
 {
-    switch (String(pszName))
+    switch (String(szName))
     {
     case Crumpkin:
         return true;
@@ -70,9 +70,9 @@ bool Hash::IsCrumpkin(const char *pszName)
     }
 }
 
-bool Hash::IsPowerup(const char *pszName)
+bool Hash::IsPowerup(const char *szName)
 {
-    switch (String(pszName))
+    switch (String(szName))
     {
     case PowerupHaste:
     case PowerupVampire:
@@ -93,9 +93,9 @@ bool Hash::IsPowerup(const char *pszName)
     }
 }
 
-/*bool Hash::IsPowerupHaste(const char *pszName)
+bool Hash::IsPowerupHaste(const char* szName)
 {
-   switch (String(pszName))
+   switch (String(szName))
    {
    case PowerupHaste:
        return true;
@@ -104,9 +104,9 @@ bool Hash::IsPowerup(const char *pszName)
    }
 }
 
-bool Hash::IsPowerupVampire(const char *pszName)
+bool Hash::IsPowerupVampire(const char* szName)
 {
-   switch (String(pszName))
+   switch (String(szName))
    {
    case PowerupVampire:
        return true;
@@ -115,9 +115,9 @@ bool Hash::IsPowerupVampire(const char *pszName)
    }
 }
 
-bool Hash::IsPowerupPrecision(const char *pszName)
+bool Hash::IsPowerupPrecision(const char* szName)
 {
-   switch (String(pszName))
+   switch (String(szName))
    {
    case PowerupPrecision:
        return true;
@@ -126,9 +126,9 @@ bool Hash::IsPowerupPrecision(const char *pszName)
    }
 }
 
-bool Hash::IsPowerupRegen(const char *pszName)
+bool Hash::IsPowerupRegen(const char* szName)
 {
-   switch (String(pszName))
+   switch (String(szName))
    {
    case PowerupRegen:
        return true;
@@ -137,9 +137,9 @@ bool Hash::IsPowerupRegen(const char *pszName)
    }
 }
 
-bool Hash::IsPowerupSupernova(const char *pszName)
+bool Hash::IsPowerupSupernova(const char* szName)
 {
-   switch (String(pszName))
+   switch (String(szName))
    {
    case PowerupSupernova:
        return true;
@@ -148,9 +148,9 @@ bool Hash::IsPowerupSupernova(const char *pszName)
    }
 }
 
-bool Hash::IsPowerupStrength(const char *pszName)
+bool Hash::IsPowerupStrength(const char* szName)
 {
-   switch (String(pszName))
+   switch (String(szName))
    {
    case PowerupStrength:
        return true;
@@ -159,9 +159,9 @@ bool Hash::IsPowerupStrength(const char *pszName)
    }
 }
 
-bool Hash::IsPowerupKnockout(const char *pszName)
+bool Hash::IsPowerupKnockout(const char* szName)
 {
-   switch (String(pszName))
+   switch (String(szName))
    {
    case PowerupKnockout:
        return true;
@@ -170,9 +170,9 @@ bool Hash::IsPowerupKnockout(const char *pszName)
    }
 }
 
-bool Hash::IsPowerupResistance(const char *pszName)
+bool Hash::IsPowerupResistance(const char* szName)
 {
-   switch (String(pszName))
+   switch (String(szName))
    {
    case PowerupResistance:
        return true;
@@ -181,9 +181,9 @@ bool Hash::IsPowerupResistance(const char *pszName)
    }
 }
 
-bool Hash::IsPowerupCrits(const char *pszName)
+bool Hash::IsPowerupCrits(const char* szName)
 {
-   switch (String(pszName))
+   switch (String(szName))
    {
    case PowerupCrits:
        return true;
@@ -192,9 +192,9 @@ bool Hash::IsPowerupCrits(const char *pszName)
    }
 }
 
-bool Hash::IsPowerupAgility(const char *pszName)
+bool Hash::IsPowerupAgility(const char* szName)
 {
-   switch (String(pszName))
+   switch (String(szName))
    {
    case PowerupAgility:
        return true;
@@ -203,9 +203,9 @@ bool Hash::IsPowerupAgility(const char *pszName)
    }
 }
 
-bool Hash::IsPowerupKing(const char *pszName)
+bool Hash::IsPowerupKing(const char* szName)
 {
-   switch (String(pszName))
+   switch (String(szName))
    {
    case PowerupKing:
        return true;
@@ -214,9 +214,9 @@ bool Hash::IsPowerupKing(const char *pszName)
    }
 }
 
-bool Hash::IsPowerupPlague(const char *pszName)
+bool Hash::IsPowerupPlague(const char* szName)
 {
-   switch (String(pszName))
+   switch (String(szName))
    {
    case PowerupPlague:
        return true;
@@ -225,20 +225,20 @@ bool Hash::IsPowerupPlague(const char *pszName)
    }
 }
 
-bool Hash::IsPowerupReflect(const char *pszName)
+bool Hash::IsPowerupReflect(const char* szName)
 {
-   switch (String(pszName))
+   switch (String(szName))
    {
    case PowerupReflect:
        return true;
    default:
        return false;
    }
-}*/
+}
 
-bool Hash::IsSpellbook(const char *pszName)
+bool Hash::IsSpellbook(const char *szName)
 {
-    switch (String(pszName))
+    switch (String(szName))
     {
     case Spell:
     case Spell1:
@@ -249,9 +249,9 @@ bool Hash::IsSpellbook(const char *pszName)
     }
 }
 
-bool Hash::IsSpellbookRare(const char *pszName)
+bool Hash::IsSpellbookRare(const char *szName)
 {
-    switch (String(pszName))
+    switch (String(szName))
     {
     case RareSpell:
     case RareSpell1:
@@ -262,9 +262,9 @@ bool Hash::IsSpellbookRare(const char *pszName)
     }
 }
 
-bool Hash::IsHazard(const char *pszName)
+bool Hash::IsHazard(const char *szName)
 {
-    switch (String(pszName))
+    switch (String(szName))
     {
     case PumpkinBomb:
     case PumpkinBombTeamcolor:
@@ -279,9 +279,9 @@ bool Hash::IsHazard(const char *pszName)
     }
 }
 
-bool Hash::IsFlag(const char *pszName)
+bool Hash::IsFlag(const char *szName)
 {
-    switch (String(pszName))
+    switch (String(szName))
     {
     case AtomBomb:
     case SkullPickup:
@@ -301,9 +301,9 @@ bool Hash::IsFlag(const char *pszName)
     }
 }
 
-bool Hash::IsBombCart(const char *pszName)
+bool Hash::IsBombCart(const char *szName)
 {
-    switch (String(pszName))
+    switch (String(szName))
     {
     case BombCart:
     case BombCart1:
@@ -317,9 +317,9 @@ bool Hash::IsBombCart(const char *pszName)
     }
 }
 
-bool Hash::IsBombCartRed(const char *pszName)
+bool Hash::IsBombCartRed(const char *szName)
 {
-    switch (String(pszName))
+    switch (String(szName))
     {
     case BombCartRed:
     case BombCartRed1:

@@ -1,7 +1,3 @@
-/*
-  Created on 29.07.18.
-*/
-
 #include <hacks/Thirdperson.hpp>
 #include <settings/Bool.hpp>
 #include <localplayer.hpp>
@@ -11,6 +7,7 @@
 
 namespace hacks::thirdperson
 {
+
 static settings::Boolean enable{ "visual.thirdperson.enable", "false" };
 static settings::Button thirdperson_key{ "visual.thirdperson-button", "<null>" };
 static settings::Boolean real_angles{ "visual.thirdperson.real-angles", "false" };
@@ -54,7 +51,7 @@ void frameStageNotify()
     if (enable)
     {
         // Add thirdperson
-         if (CE_GOOD(LOCAL_E) && LOCAL_E->m_bAlivePlayer())
+        if (!g_pLocalPlayer->life_state)
             CE_INT(LOCAL_E, netvar.nForceTauntCam) = 1;
         was_enabled = true;
     }
@@ -70,4 +67,5 @@ void frameStageNotify()
         CE_FLOAT(LOCAL_E, netvar.deadflag + 8) = g_pLocalPlayer->realAngles.y;
     }
 }
+
 } // namespace hacks::thirdperson

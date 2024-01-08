@@ -1,5 +1,4 @@
 #pragma once
-
 enum round_states
 {
     RT_STATE_SETUP = 0,
@@ -9,8 +8,8 @@ enum round_states
 class CTeamRoundTimer
 {
 public:
-    int GetSetupTimeLength() const;
-    round_states GetRoundState() const;
+    int GetSetupTimeLength();
+    round_states GetRoundState();
     void Update();
 
     int entity;

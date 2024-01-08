@@ -18,11 +18,11 @@
 #include "C_TFWeaponBase.hpp"
 #include "C_TFWeaponBaseMelee.hpp"
 #include "C_TFWeaponBaseGun.hpp"
+#include "CTFLobbyShared.hpp"
 
 #include "CTFParty.hpp"
 #include "CTFGCClientSystem.hpp"
 #include "ITFGroupMatchCriteria.hpp"
 #include "CTFPartyClient.hpp"
-
 #include "C_MannVsMachineStats.hpp"
 #include "CTFInventoryManager.hpp"

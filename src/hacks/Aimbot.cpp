@@ -12,6 +12,7 @@
 #include <PlayerTools.hpp>
 #include <settings/Bool.hpp>
 #include "common.hpp"
+#include <targethelper.hpp>
 #include "MiscTemporary.hpp"
 #include "hitrate.hpp"
 #include "Warp.hpp"
@@ -647,6 +648,8 @@ CachedEntity *RetrieveBestTarget(bool aimkey_state)
         {
             switch (*priority_mode)
             {
+            case 0: // Smart Priority
+                score = static_cast<float>(GetScoreForEntity(ent));
                 break;
             case 1: // Fov Priority
                 score = 360.0f - cd.fov;
@@ -873,30 +876,27 @@ bool Aim(CachedEntity *entity)
 }
 
 // A function to check whether player can autoshoot
-bool begancharge = false;
+bool began_charge = false;
 void DoAutoshoot(CachedEntity *target_entity)
 {
-    bool attack = true;
     // Enable check
     if (!*autoshoot)
         return;
-    // Check if we can shoot, ignore during rapidfire (special case for minigun: we can shoot 24/7 just dont aim, idk why this works)
-    if (*only_can_shoot && !CanShoot() && !hacks::warp::in_rapidfire && LOCAL_W->m_iClassID() != CL_CLASS(CTFMinigun))
-        return;
+    bool attack = true;
+
     // Rifle check
     if (g_pLocalPlayer->holding_sniper_rifle && *zoomed_only && !CanHeadshot() && !AllowNoScope(target_entity))
         attack = false;
     // Autoshoot breaks with Slow aimbot, so use a workaround to detect when it can
-    if (slow_aim && !slow_can_shoot)
+    else if (slow_aim != 0 && !slow_can_shoot)
         attack = false;
-
-    // Dont autoshoot without anything in clip
-    if (CE_INT(g_pLocalPlayer->weapon(), netvar.m_iClip1) == 0)
+    // Don't autoshoot without anything in clip
+    else if (CE_INT(LOCAL_W, netvar.m_iClip1) == 0)
         attack = false;
 
     if (attack)
     {
-        // TO DO: Sending both reload and attack will activate the hitmans heatmaker ability
+        // TO DO: Sending both reload and attack will activate the Hitman's Heatmaker ability
         // Don't activate it only on first kill (or somehow activate it before a shot)
         current_user_cmd->buttons |= IN_ATTACK | (*autoreload && CarryingHeatmaker() ? IN_RELOAD : 0);
         if (target_entity)

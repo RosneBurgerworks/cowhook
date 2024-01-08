@@ -113,7 +113,7 @@ constexpr size_owned BombCartRed1 = 0xdc059338;
 bool IsAmmo(const char *szName);
 bool IsCrumpkin(const char *szName);
 bool IsPowerup(const char *szName);
-/*bool IsPowerupHaste(const char *szName);
+bool IsPowerupHaste(const char *szName);
 bool IsPowerupVampire(const char *szName);
 bool IsPowerupPrecision(const char *szName);
 bool IsPowerupRegen(const char *szName);
@@ -125,7 +125,7 @@ bool IsPowerupCrits(const char *szName);
 bool IsPowerupAgility(const char *szName);
 bool IsPowerupKing(const char *szName);
 bool IsPowerupPlague(const char *szName);
-bool IsPowerupReflect(const char *szName);*/
+bool IsPowerupReflect(const char *szName);
 bool IsHealth(const char *szName);
 bool IsSpellbook(const char *szName);
 bool IsSpellbookRare(const char *szName);

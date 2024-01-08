@@ -1,26 +1,53 @@
-# Cowhook
+# Cowhook 1/6/24 
+## Credits to: hexadecimalerrorcode
 
-## Leak of Cowhook, dated 15/12/23.
+# We for maybe code here... 👍👍
 
-If you wish to boast about your "improvements" and also call other actual talented coders in this community "pasters" while also stealing off said people's code, you should fully expect what is going to come your way.
-
-## Credits to:
-
-- Riley
-- Platinumchao (LawlessCherry)
-- Rosne (because most of this is pasted from his fork)
-- COSSINCREW'
-
-# How to use bad paste?
-Run this command to clone:  
-`git clone https://github.com/RileyKun/cowhook`
-
-To build, run:  
-`./build`
-
-To inject, run:  
-`sudo ./attach`
-
-# Closing notes
-I wouldn't try and strike this repo, as the original source you're forking from is licensed under GNU-GPL and is not your own original code.  
-Keep trying to call explowz's fork trash and trying to make PRs removing perfectly working features. The immaturity you show within those PRs are very funny to look at.
+```
+                                       /;    ;\
+                                   __  \\____//
+                                  /{_\_/   `'\____
+                                  \___   (o)  (o  }
+       _____________________________/          :--'  
+   ,-,'`@@@@@@@@       @@@@@@         \_    `__\
+  ;:(  @@@@@@@@@        @@@             \___(o'o)
+  :: )  @@@@          @@@@@@        ,'@@(  `===='       
+  :: : @@@@@:          @@@@         `@@@:
+  :: \  @@@@@:       @@@@@@@)    (  '@@@'
+  ;; /\      /`,    @@@@@@@@@\   :@@@@@)
+  ::/  )    {_----------------:  :~`,~~;
+ ;;'`; :   )                  :  / `; ;
+;;;; : :   ;                  :  ;  ; :              
+`'`' / :  :                   :  :  : :
+    )_ \__;      ";"          :_ ;  \_\       `,','
+    :__\  \    * `,'*         \  \  :  \   *  8`;'*  *
+        `^'     \ :/           `^'  `-^-'   \v/ :  \/ 
+ ## ##    ## ##   ##   ##  ###  ##   ## ##    ## ##   ##  ###  
+##   ##  ##   ##  ##   ##   ##  ##  ##   ##  ##   ##  ##  ##   
+##       ##   ##  ##   ##   ##  ##  ##   ##  ##   ##  ## ##    
+##       ##   ##  ## # ##   ## ###  ##   ##  ##   ##  ## ##    
+##       ##   ##  # ### #   ##  ##  ##   ##  ##   ##  ## ###   
+##   ##  ##   ##   ## ##    ##  ##  ##   ##  ##   ##  ##  ##   
+ ## ##    ## ##   ##   ##  ###  ##   ## ##    ## ##   ##  ###  
+                                                               
+```
+# Set up
+``` 
+git clone https://github.com/pixelwarrior99/cowhook.git
+```
+# COWHOOK WILL NOT WORK ON UBUNTU
+# installing required dependencies
+Void Linux ``` cmake make git gcc gdb gcc-multilib boost boost-devel-32bit SDL2-devel SDL2-devel-32bit glew-devel-32bit freetype-devel-32bit libglvnd-devel-32bit rsync curl dialog ```
+#
+Arch Linux ``` git boost cmake make gcc gdb lib32-sdl2 lib32-glew lib32-freetype2 rsync lib32-libglvnd dialog curl ```
+#
+Debian 12 ```  build-essential git g++ g++-multilib libboost-dev gdb libsdl2-dev:i386 libfreetype6-dev:i386 cmake dialog rsync curl ```
+# Build cowhook
+```
+./build.sh
+```
+# Inject
+```
+Inject cowhook in to hl2_linux with sudo ./attach
+```
+# Cowhook made by OneTF2

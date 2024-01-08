@@ -17,7 +17,7 @@ static void CreateMove()
 {
     if (enable && CE_GOOD(LOCAL_E) && LOCAL_E->m_bAlivePlayer())
     {
-        if (g_GlobalVars->framecount % 100 == 0)
+        if (g_GlobalVars->framecount % 18 == 0)
         {
             KeyValues *kv = new KeyValues("+use_action_slot_item_server");
             g_IEngine->ServerCmdKeyValues(kv);

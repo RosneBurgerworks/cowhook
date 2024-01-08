@@ -81,7 +81,6 @@ void dispatchUserMessage(bf_read &buffer, int type)
         if (reason == 2) // VOTE_FAILED_RATE_EXCEEDED
             delay = cooldown;
 
-        hacks::catbot::timer_votekicks -= Timer::sec_to_ms(delay);
         break;
     }
     case 46:

@@ -1,20 +1,15 @@
-/*
- * hooks.cpp
- *
- *  Created on: Oct 4, 2016
- *      Author: nullifiedcat
- */
-
 #include "common.hpp"
 
-#include <cstring>
+#include <stdlib.h>
+#include <string.h>
 
 namespace hooks
 {
+
 unsigned CountMethods(method_table_t table)
 {
     unsigned int i = 0;
-    while (table[i++])
+    while (table[++i])
         ;
     return i;
 }
@@ -43,7 +38,7 @@ VMTHook::VMTHook()
 {
     static_assert(ptr_size == 4, "Pointer size must be DWORD.");
     hooks.push_back(this);
-}
+};
 
 VMTHook::~VMTHook()
 {
@@ -116,6 +111,5 @@ VMTHook soundclient{};
 VMTHook enginevgui{};
 VMTHook vstd{};
 VMTHook eventmanager2{};
-VMTHook cmdclientunrestricted{};
 VMTHook toolbox{};
 } // namespace hooks

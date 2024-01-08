@@ -91,12 +91,12 @@ find_package(Git REQUIRED)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/external")
 find_package(SDL2 REQUIRED)
 
-find_package(Boost 1.83.0 )
+find_package(Boost 1.76.0 EXACT)
 if (NOT Boost_FOUND)
     set(BOOST_LIBS_OPTIONAL "" CACHE STRING "Boost libs to be compiled")
     add_subdirectory(external/boost-cmake)
     set(BOOST_ROOT ${CMAKE_BINARY_DIR}/_deps/boost-src)
-    find_package(Boost 1.83.0 )
+    find_package(Boost 1.76.0 EXACT REQUIRED)
     include_directories(${Boost_INCLUDE_DIRS})
 endif()
 
@@ -142,7 +142,6 @@ if (EnableVisuals)
 endif()
 
 configure_file(include/config.h.in ${CMAKE_SOURCE_DIR}/include/config.h @ONLY)
-configure_file(include/version.h.in ${CMAKE_SOURCE_DIR}/include/version.h @ONLY)
 
 set(CMAKE_CXX_FLAGS "-m32 -march=native -mtune=native -fexceptions -DNDEBUG")
 

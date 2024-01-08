@@ -14,7 +14,6 @@ namespace player_tools
 static settings::Int betrayal_limit{ "player-tools.betrayal-limit", "2" };
 static settings::Boolean betrayal_sync{ "player-tools.betrayal-ipc-sync", "true" };
 
-static settings::Boolean taunting{ "player-tools.ignore.taunting", "false" };
 static settings::Boolean ignoreCathook{ "player-tools.ignore.cathook", "true" };
 
 static std::unordered_map<unsigned, unsigned> betrayal_list{};
@@ -36,8 +35,6 @@ bool shouldTarget(CachedEntity *entity)
 {
     if (entity->m_Type() == ENTITY_PLAYER)
     {
-        if (taunting && HasCondition<TFCond_Taunting>(entity) && CE_INT(entity, netvar.m_iTauntIndex) == 3)
-            return false;
         if (HasCondition<TFCond_HalloweenGhostMode>(entity))
             return false;
         // Don't shoot players in truce
@@ -106,7 +103,7 @@ void onKilledBy(unsigned id)
         {
             if (ipc::peer && ipc::peer->connected)
             {
-                std::string command = "cat_ipc_exec_all cow_pl_mark_betrayal " + std::to_string(id);
+                std::string command = "cow_ipc_exec_all cow_pl_mark_betrayal " + std::to_string(id);
                 if (command.length() >= 63)
                     ipc::peer->SendMessage(nullptr, -1, ipc::commands::execute_client_cmd_long, command.c_str(), command.length() + 1);
                 else
