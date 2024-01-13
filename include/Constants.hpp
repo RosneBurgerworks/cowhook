@@ -8,7 +8,7 @@
 // This file will include global constant expressions
 #pragma once
 
-constexpr const char *CON_PREFIX = "cow_";
+constexpr const char *CON_PREFIX = "cat_";
 
 constexpr unsigned short MAX_ENTITIES = 6400;
 constexpr unsigned char MAX_PLAYERS  = 100;

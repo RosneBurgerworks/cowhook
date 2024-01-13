@@ -142,9 +142,7 @@ matrix3x4_t *EntityHitboxCache::GetBones(int numbones)
         if (g_Settings.is_create_move)
         {
 
-            // ALSO, WHAT IN THE NAME OF GOD IS 0x7FF00 !?!?!?!?!?!?!?!? WHY IS THIS USED INSTEAD OF BONE_USED_BY_HITBOX ENUM BUILT INTO THE SDK >?!?!?!?!?!? !?!?!?!? !? !?!?!
-            // WHATEVER, ALL (PUBLIC) CHEATS USE THIS RANDOM SIGNED BINARY PIECE OF SHIT, SO THEY CANT BE WRONG (RIGHT!?!?!?!)
-            // I NEED MENTAL HELP WITH THIS FAGGOT CATHOOK CODE
+            // Use the new hitboxes
             bones_setup = RAW_ENT(parent_ref)->SetupBones(bones.data(), numbones, BONE_USED_BY_HITBOX, bones_setup_time);
         }
     }

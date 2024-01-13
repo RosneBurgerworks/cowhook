@@ -4,7 +4,6 @@ rm -rf boost-cmake
 rm -rf source-sdk-2013-headers
 rm -rf libxoverlay
 rm -rf TF2_NavFile_Reader
-rm -rf clip
 rm -rf MicroPather
 rm -rf simple-ipc
 popd
@@ -14,10 +13,10 @@ if [ ! -e boost-cmake ]; then
 git clone https://github.com/RosneBurgerworks/boost-cmake.git
 fi
 if [ ! -e source-sdk-2013-headers ]; then
-git clone https://github.com//RosneBurgerworks/source-sdk-2013-headers
+git clone https://github.com//nullworks/source-sdk-2013-headers
 fi
 if [ ! -e libxoverlay ]; then
-git clone https://github.com//RosneBurgerworks/libxoverlay
+git clone https://github.com//nullworks/libxoverlay
 fi
 if [ ! -e TF2_NavFile_Reader ]; then
 git clone https://github.com/nullworks/TF2_NavFile_Reader
@@ -26,10 +25,10 @@ if [ ! -e clip ]; then
 git clone https://github.com/nullworks/clip
 fi
 if [ ! -e MicroPather ]; then
-git clone https://github.com/explowz/MicroPather
+git clone https://github.com/nullworks/MicroPather
 fi
 if [ ! -e simple-ipc ]; then
-git clone https://github.com/RosneBurgerworks/simple-ipc.git
+git clone https://github.com/nullworks/simple-ipc.git
 fi
 popd
 
@@ -51,18 +50,4 @@ sudo bash -c "cd \"$cwd\"; cmake --build . --target data" || {
 popd
 echo -e "\n\033[1;34mcowhook updated successfully\n\033[0m"
 
-read -r -p "Remove /external extras? [y/N] " response
-if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]
-then
 
-pushd external/
-rm -rf boost-cmake
-rm -rf source-sdk-2013-headers
-rm -rf libxoverlay
-rm -rf TF2_NavFile_Reader
-rm -rf clip
-rm -rf MicroPather
-rm -rf simple-ipc
-popd
-
-fi

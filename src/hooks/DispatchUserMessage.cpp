@@ -9,7 +9,7 @@
 #include <hacks/AntiAim.hpp>
 #include <settings/Bool.hpp>
 #include "HookedMethods.hpp"
-#include "Bot.hpp"
+#include "CatBot.hpp"
 #include <iomanip>
 #include "votelogger.hpp"
 #include "nospread.hpp"

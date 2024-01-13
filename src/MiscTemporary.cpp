@@ -1,5 +1,3 @@
-//  Copyrighted to nullworks
-
 #include "MiscTemporary.hpp"
 #include "Warp.hpp"
 #include "nospread.hpp"

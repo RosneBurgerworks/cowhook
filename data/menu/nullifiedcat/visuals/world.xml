@@ -18,10 +18,11 @@
             <AutoVariable width="fill" target="remove.cloak" label="Remove cloak"/>
             <AutoVariable width="fill" target="remove.disguise" label="Remove disguise"/>
             <AutoVariable width="fill" target="remove.scope" label="Remove scope"/>
+            <AutoVariable width="fill" target="remove.taunts" label="Remove Taunts"/>
             <AutoVariable width="fill" target="remove.zoom" label="Remove zoom/keep rifle"/>
         </List>
     </Box>
-    <Box padding="12 6 6 6" width="content" height="content" name="Misc" x="195" y="80">
+    <Box padding="12 6 6 6" width="content" height="content" name="Misc" x="195" y="85">
         <List width="180">
             <AutoVariable width="fill" target="visual.no-shake" label="No shake" tooltip="Stops the screen from shaking"/>
         </List>

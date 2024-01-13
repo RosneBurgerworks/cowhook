@@ -9,7 +9,7 @@
 #include "common.hpp"
 #include <boost/algorithm/string.hpp>
 #include <Bool.hpp>
-#include "Bot.hpp"
+#include "CatBot.hpp"
 #include "votelogger.hpp"
 
 static settings::Boolean vote_kicky{ "votelogger.autovote.yes", "true" };

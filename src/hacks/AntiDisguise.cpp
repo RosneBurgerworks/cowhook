@@ -1,15 +1,15 @@
 #include <settings/Bool.hpp>
 #include "common.hpp"
 
+#if ENABLE_TEXTMODE
+static settings::Boolean enable{ "remove.disguise", "1" };
+#else
+static settings::Boolean enable{ "remove.disguise", "0" };
+#endif
+static settings::Boolean no_invisibility{ "remove.cloak", "0" };
+
 namespace hacks::antidisguise
 {
-#if ENABLE_TEXTMODE
-static settings::Boolean enable{ "remove.disguise", "true" };
-static settings::Boolean no_invisibility{ "remove.cloak", "true" };
-#else
-static settings::Boolean enable{ "remove.disguise", "false" };
-static settings::Boolean no_invisibility{ "remove.cloak", "false" };
-#endif
 
 void cm()
 {
@@ -17,8 +17,9 @@ void cm()
     if (!*enable && !*no_invisibility)
         return;
 
-    for (auto const &ent: entity_cache::player_cache)
+    for (int i = 1; i <= g_IEngine->GetMaxClients(); ++i)
     {
+        ent = ENTITY(i);
         if (CE_BAD(ent) || ent == LOCAL_E || ent->m_Type() != ENTITY_PLAYER || CE_INT(ent, netvar.iClass) != tf_class::tf_spy)
         {
             continue;
@@ -32,5 +33,8 @@ void cm()
         }
     }
 }
-static InitRoutine EC([](){ EC::Register(EC::CreateMove, cm, "antidisguise", EC::average); EC::Register(EC::CreateMoveWarp, cm, "antidisguise_w", EC::average); });
+static InitRoutine EC([]() {
+    EC::Register(EC::CreateMove, cm, "antidisguise", EC::average);
+    EC::Register(EC::CreateMoveWarp, cm, "antidisguise_w", EC::average);
+});
 } // namespace hacks::antidisguise

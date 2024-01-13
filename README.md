@@ -1,5 +1,5 @@
-# Cowhook 1/6/24 
-## Credits to: hexadecimalerrorcode
+# Cowhook 1/13/24
+## Credits: [Sir Nuttmaster Ronald](https://www.youtube.com/channel/UCqmqgTF-t7jbiuwB6kLg2lA)
 
 # We for maybe code here... 👍👍
 

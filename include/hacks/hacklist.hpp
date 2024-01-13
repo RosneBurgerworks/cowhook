@@ -20,5 +20,5 @@
 #include "AutoJoin.hpp"
 #include "Spam.hpp"
 #include "NavBot.hpp"
-#include "Bot.hpp"
+#include "CatBot.hpp"
 #include "Backtrack.hpp"

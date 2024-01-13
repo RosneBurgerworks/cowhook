@@ -8,7 +8,7 @@
 #include <random>
 #include <settings/Bool.hpp>
 //#include <utility>
-#include "Bot.hpp"
+#include "CatBot.hpp"
 #include "common.hpp"
 #include "hack.hpp"
 #include "PlayerTools.hpp"

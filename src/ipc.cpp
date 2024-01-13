@@ -20,7 +20,8 @@
 
  */
 
-#include <hacks/Bot.hpp>
+
+#include <hacks/CatBot.hpp>
 #include <settings/Bool.hpp>
 #include "interfaces.hpp"
 #include "ipc.hpp"

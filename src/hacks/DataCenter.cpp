@@ -1,42 +1,32 @@
 /*
- * Credits to the Hoster Alex for making this and giving us the permission
- * To add it to Cathook.
- *
- * Refined and fixed by BenCat07
+ *  Created by Alex
+ *  Fixed by OneTF2
  */
 /* License: GPLv3 */
+
 #include <common.hpp>
-/* For MENU_COLOR definition */
 #include <MiscTemporary.hpp>
-/* e8call_direct */
 #include <e8call.hpp>
 #include <set>
-/* For Textmode */
 #include <map>
-/* Splitting strings nicely */
 #include <boost/algorithm/string.hpp>
 #include <utility>
 
-/* Global switch for DataCenter hooks */
 static settings::Boolean enable{ "dc.enable", "false" };
-/* List of preferred data centers separated by comma ',' */
 static settings::String regions{ "dc.regions", "" };
-/* Find servers only in data centers provided by regions */
 static settings::Boolean restrict { "dc.restrict", "true" };
-/* Enable/disable individual continents */
 static settings::Boolean enable_eu{ "dc.toggle-europe", "false" };
 static settings::Boolean enable_north_america{ "dc.toggle-north-america", "false" };
 static settings::Boolean enable_south_america{ "dc.toggle-south-america", "false" };
 static settings::Boolean enable_asia{ "dc.toggle-asia", "false" };
 static settings::Boolean enable_oceania{ "dc.toggle-oceania", "false" };
-static settings::Boolean enable_africa{ "dc.toggle-africa", "false" };
+
 
 typedef std::array<char, 5> CidStr_t;
 
 struct SteamNetworkingPOPID_decl
 {
     unsigned v;
-    /* 'out' must point to array with capacity at least 5 */
     void ToString(char *out) const
     {
         out[0] = char(v >> 16);
@@ -51,7 +41,6 @@ static std::set<CidStr_t> regionsSet;
 
 static void *g_ISteamNetworkingUtils;
 
-// clang-format off
 static std::unordered_map<std::string, std::string> dc_name_map{
     {"ams", "Amsterdam"},
     {"atl", "Atlanta"},
@@ -61,17 +50,14 @@ static std::unordered_map<std::string, std::string> dc_name_map{
     {"mwh", "Moses Lake/Washington"},
     {"fra", "Frankfurt"},
     {"gnrt", "Tokyo (gnrt)"},
-    {"gru", "Sao Paulo"},
     {"hkg", "Honk Kong"},
-    {"iad", "Sterling/Virginia"},
-    {"jnb", "Johannesburg"},
+    {"iad", "Virginia"},
     {"lax", "Los Angelos"},
     {"lhr", "London"},
     {"lim", "Lima"},
     {"maa", "Chennai"},
     {"mad", "Madrid"},
     {"man", "Manilla"},
-    {"ord", "Chicago"},
     {"par", "Paris"},
     {"scl", "Santiago"},
     {"sea", "Seattle"},
@@ -82,15 +68,13 @@ static std::unordered_map<std::string, std::string> dc_name_map{
     {"tyo", "Tokyo (North)"},
     {"tyo2", "Tokyo (North)"},
     {"tyo1", "Tokyo (South)"},
-    {"vie", "Vienna"},
     {"waw", "Warsaw"}};
-// clang-format on
+
 static std::vector<std::string> eu_datacenters            = { { "ams" }, { "fra" }, { "lhr" }, { "mad" }, { "par" }, { "sto" }, { "sto2" }, { "waw" }, { "lux" }, { "lux1" }, { "lux2" } };
-static std::vector<std::string> north_america_datacenters = { { "atl" }, { "eat" }, { "mwh" }, { "iad" }, { "lax" },  { "ord" }, { "sea" } };
+static std::vector<std::string> north_america_datacenters = { { "atl" }, { "eat" }, { "mwh" }, { "iad" }, { "lax" }, { "sea" } };
 static std::vector<std::string> south_america_datacenters = { { "gru" }, { "scl" } };
 static std::vector<std::string> asia_datacenters          = { { "bom" }, { "dxb" }, { "gnrt" }, { "hkg" }, { "maa" }, { "man" }, { "sgp" }, { "tyo" }, { "tyo2" }, { "tyo1" } };
-static std::vector<std::string> oceana_datacenters        = { { "syd" }, { "vie" } };
-static std::vector<std::string> africa_datacenters        = { { "jnb" } };
+static std::vector<std::string> oceana_datacenters        = { { "syd" } };
 
 
 static void Refresh()
@@ -98,11 +82,10 @@ static void Refresh()
     auto gc = (bool *) re::CTFGCClientSystem::GTFGCClientSystem();
     if (!gc)
         return;
-    /* GC's flag to force ping refresh */
     gc[0x374] = true;
 }
 
-static CatCommand force_refersh("fastq", "Force refresh of ping data", Refresh);
+static CatCommand force_refersh("refresh", "Force refresh of ping data", Refresh);
 
 static void OnRegionsUpdate(std::string regions)
 {
@@ -123,7 +106,7 @@ static void OnRegionsUpdate(std::string regions)
         region.fill(0);
         std::strcpy(region.data(), region_str.c_str());
         regionsSet.emplace(region);
-        g_ICvar->ConsoleColorPrintf(MENU_COLOR, "[cowhook]: Fast Queue Enabled\n");
+        g_ICvar->ConsoleColorPrintf(MENU_COLOR, "[cowhook]: Froce refresh ping\n");
 
     }
     if (*enable)
@@ -162,7 +145,6 @@ static void Hook(bool on)
     Refresh();
 }
 
-// if add is false it will remove instead
 void manageRegions(const std::vector<std::string> &regions_vec, bool add)
 {
     std::set<std::string> regions_split;
@@ -202,7 +184,7 @@ static void Init()
                 g_ISteamNetworkingUtils = ((void *(*) ())(dlsym(sharedobj::libsteamnetworkingsockets().lmap, "SteamNetworkingUtils_LibV4")))();
                 if (!g_ISteamNetworkingUtils)
                 {
-                    logging::Info("DataCenter.cpp: Failed to create ISteamNetworkingUtils!");
+                    logging::Info("DataCenters: Failed to create ISteamNetworkingUtils!");
                     return;
                 }
             }
@@ -215,7 +197,6 @@ static void Init()
     enable_south_america.installChangeCallback([](settings::VariableBase<bool> &, bool after) { manageRegions(south_america_datacenters, after); });
     enable_asia.installChangeCallback([](settings::VariableBase<bool> &, bool after) { manageRegions(asia_datacenters, after); });
     enable_oceania.installChangeCallback([](settings::VariableBase<bool> &, bool after) { manageRegions(oceana_datacenters, after); });
-    enable_africa.installChangeCallback([](settings::VariableBase<bool> &, bool after) { manageRegions(africa_datacenters, after); });
 }
 
 static InitRoutine init(Init);

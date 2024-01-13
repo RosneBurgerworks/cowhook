@@ -282,7 +282,7 @@ static void pl_cleanup()
 
 CatCommand pl_clean("pl_clean", "Removes empty entries to reduce RAM usage", pl_cleanup);
 
-CatCommand pl_set_state("pl_set_state", "cow_pl_set_state [playername] [state] (Tab to autocomplete)",
+CatCommand pl_set_state("pl_set_state", "cat_pl_set_state [playername] [state] (Tab to autocomplete)",
                         [](const CCommand &args)
                         {
                             if (args.ArgC() != 3)
@@ -328,7 +328,7 @@ CatCommand pl_set_state("pl_set_state", "cow_pl_set_state [playername] [state] (
                             logging::Info("Unknown State %s. (Use tab for autocomplete)", state.c_str());
                         });
 
-static int cow_pl_set_state_completionCallback(const char *c_partial, char commands[COMMAND_COMPLETION_MAXITEMS][COMMAND_COMPLETION_ITEM_LENGTH])
+static int cat_pl_set_state_completionCallback(const char *c_partial, char commands[COMMAND_COMPLETION_MAXITEMS][COMMAND_COMPLETION_ITEM_LENGTH])
 {
     std::string partial = c_partial;
     std::string parts[2]{};
@@ -377,7 +377,7 @@ static int cow_pl_set_state_completionCallback(const char *c_partial, char comma
             // if (s.find(parts[0]) == 0)
             if (boost::to_lower_copy(s).find(parts[0]) == 0)
             {
-                snprintf(commands[count++], COMMAND_COMPLETION_ITEM_LENGTH - 1, "cow_pl_set_state %s", s.c_str());
+                snprintf(commands[count++], COMMAND_COMPLETION_ITEM_LENGTH - 1, "cat_pl_set_state %s", s.c_str());
             }
         }
         return count;
@@ -387,7 +387,7 @@ static int cow_pl_set_state_completionCallback(const char *c_partial, char comma
     {
         if (boost::to_lower_copy(s).find(parts[1]) == 0)
         {
-            snprintf(commands[count++], COMMAND_COMPLETION_ITEM_LENGTH - 1, "cow_pl_set_state %s %s", parts[0].c_str(), s.c_str());
+            snprintf(commands[count++], COMMAND_COMPLETION_ITEM_LENGTH - 1, "cat_pl_set_state %s %s", parts[0].c_str(), s.c_str());
             if (count == COMMAND_COMPLETION_MAXITEMS)
                 break;
         }
@@ -450,6 +450,6 @@ static InitRoutine init(
     []()
     {
         pl_set_state.cmd->m_bHasCompletionCallback = true;
-        pl_set_state.cmd->m_fnCompletionCallback   = cow_pl_set_state_completionCallback;
+        pl_set_state.cmd->m_fnCompletionCallback   = cat_pl_set_state_completionCallback;
     });
 } // namespace playerlist

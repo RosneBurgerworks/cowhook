@@ -1,7 +1,7 @@
 #include <settings/Registered.hpp>
 #include <MiscTemporary.hpp>
 #include "HookedMethods.hpp"
-#include "Bot.hpp"
+#include "CatBot.hpp"
 #include "drawmgr.hpp"
 
 static settings::Boolean debug_log_panel_names{ "debug.log-panels", "false" };
