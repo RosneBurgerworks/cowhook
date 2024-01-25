@@ -3,18 +3,29 @@
 
 namespace EC
 {
+
 struct EventCallbackData
 {
-    explicit EventCallbackData(EventFunction function, const std::string &name, enum ec_priority priority) : function{ function }, priority{ int(priority) }, event_name{ name }
+    explicit EventCallbackData(const EventFunction &function, std::string name, enum ec_priority priority) : function{ function }, priority{ int(priority) }, section(name), event_name{ name }
     {
     }
     EventFunction function;
     int priority;
-
+    ProfilerSection section;
     std::string event_name;
 };
 
 static std::vector<EventCallbackData> events[ec_types::EcTypesSize];
+CatCommand evt_print("debug_print_events", "Print EC events", []() {
+    for (int i = 0; i < int(ec_types::EcTypesSize); ++i)
+    {
+        logging::Info("%d events:", i);
+
+        for (auto it = events[i].begin(); it != events[i].end(); ++it)
+            logging::Info("%s", it->event_name.c_str());
+        logging::Info("");
+    }
+});
 
 void Register(enum ec_types type, const EventFunction &function, const std::string &name, enum ec_priority priority)
 {
@@ -39,7 +50,11 @@ void run(ec_types type)
     auto &vector = events[type];
     for (auto &i : vector)
     {
+#if ENABLE_PROFILER
+        volatile ProfilerNode node(i.section);
+#endif
         i.function();
     }
 }
+
 } // namespace EC

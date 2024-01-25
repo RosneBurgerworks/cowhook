@@ -1,3 +1,10 @@
+/*
+ * textfile.cpp
+ *
+ *  Created on: Jan 24, 2017
+ *      Author: nullifiedcat
+ */
+
 #include "common.hpp"
 
 #include <stdio.h>

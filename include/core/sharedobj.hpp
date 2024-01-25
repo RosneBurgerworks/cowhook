@@ -1,5 +1,5 @@
 /*
- * sharedobj.hpp
+ * sharedobj.h
  *
  *  Created on: Oct 3, 2016
  *      Author: nullifiedcat
@@ -16,7 +16,8 @@ typedef void *(*fn_CreateInterface_t)(const char *, int *);
 
 namespace sharedobj
 {
-bool LocateSharedObject(const std::string &name, std::string &out_full_path);
+
+bool LocateSharedObject(std::string &name, std::string &out_full_path);
 
 class SharedObject
 {
@@ -27,6 +28,7 @@ public:
     char *Pointer(uintptr_t offset) const;
     void *CreateInterface(const std::string &interface);
 
+public:
     std::string file;
     std::string path;
     bool factory{ false };
@@ -36,14 +38,15 @@ public:
     link_map *lmap{ nullptr };
 };
 
+SharedObject &serverbrowser();
 SharedObject &steamclient();
 SharedObject &client();
 SharedObject &engine();
 SharedObject &launcher();
-SharedObject &libsteam_api();
-SharedObject &libsteamnetworkingsockets();
-SharedObject &libvstdlib();
-SharedObject &libtier0();
+SharedObject &steamapi();
+SharedObject &steamnetworkingsockets();
+SharedObject &vstdlib();
+SharedObject &tier0();
 SharedObject &inputsystem();
 SharedObject &materialsystem();
 SharedObject &filesystem_stdio();

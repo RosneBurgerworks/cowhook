@@ -6,42 +6,42 @@
  */
 
 #include "common.hpp"
-#include "common.hpp"
 #include <boost/algorithm/string.hpp>
-#include <Bool.hpp>
+#include <settings/Bool.hpp>
 #include "CatBot.hpp"
 #include "votelogger.hpp"
 
-static settings::Boolean vote_kicky{ "votelogger.autovote.yes", "true" };
-static settings::Boolean vote_kickn{ "votelogger.autovote.no", "true" };
+static settings::Boolean vote_kicky{ "votelogger.autovote.yes", "false" };
+static settings::Boolean vote_kickn{ "votelogger.autovote.no", "false" };
 static settings::Boolean vote_rage_vote{ "votelogger.autovote.no.rage", "false" };
 static settings::Boolean chat{ "votelogger.chat", "true" };
 static settings::Boolean chat_partysay{ "votelogger.chat.partysay", "false" };
 static settings::Boolean chat_casts{ "votelogger.chat.casts", "false" };
-static settings::Boolean kickysay{ "votelogger.kicksay", "false" };
 static settings::Boolean chat_casts_f1_only{ "votelogger.chat.casts.f1-only", "true" };
-// Leave party and crash, useful VAC hosting
+// Leave party and crash, useful for personal party bots
 static settings::Boolean abandon_and_crash_on_kick{ "votelogger.restart-on-kick", "false" };
 
 namespace votelogger
 {
+
 static bool was_local_player{ false };
 static Timer local_kick_timer{};
+static int kicked_player;
 
 static void vote_rage_back()
 {
     static Timer attempt_vote_time;
     char cmd[40];
-    player_info_s info{};
+    player_info_s info;
     std::vector<int> targets;
 
     if (!g_IEngine->IsInGame() || !attempt_vote_time.test_and_set(1000))
         return;
 
-    for (const auto &ent : entity_cache::player_cache)
+    for (auto const &ent : entity_cache::player_cache)
     {
         // TO DO: m_bEnemy check only when you can't vote off players from the opposite team
-        if (ent->m_bEnemy() || ent == LOCAL_E)
+        if (ent == LOCAL_E || ent->m_bEnemy())
             continue;
 
         if (!GetPlayerInfo(ent->m_IDX, &info))
@@ -57,15 +57,13 @@ static void vote_rage_back()
     std::snprintf(cmd, sizeof(cmd), "callvote kick \"%d cheating\"", targets[UniformRandomInt(0, targets.size() - 1)]);
     g_IEngine->ClientCmd_Unrestricted(cmd);
 }
-
 // Call Vote RNG
 struct CVRNG
 {
     std::string content;
-    unsigned int time{};
+    unsigned time;
     Timer timer{};
 };
-
 static CVRNG vote_command;
 void dispatchUserMessage(bf_read &buffer, int type)
 {
@@ -73,7 +71,7 @@ void dispatchUserMessage(bf_read &buffer, int type)
     {
     case 45:
     {
-        // Vote setup Failed
+        // Vote setup Failed, Refresh vote timer for catbot so it can try again
         int reason   = buffer.ReadByte();
         int cooldown = buffer.ReadShort();
         int delay    = 4;
@@ -81,6 +79,7 @@ void dispatchUserMessage(bf_read &buffer, int type)
         if (reason == 2) // VOTE_FAILED_RATE_EXCEEDED
             delay = cooldown;
 
+        hacks::shared::catbot::timer_votekicks.last -= std::chrono::seconds(delay);
         break;
     }
     case 46:
@@ -94,7 +93,7 @@ void dispatchUserMessage(bf_read &buffer, int type)
         char name[64];
         buffer.ReadString(reason, 64, false, nullptr);
         buffer.ReadString(name, 64, false, nullptr);
-        auto target = static_cast<unsigned char>(buffer.ReadByte());
+        auto target = (unsigned char) buffer.ReadByte();
         buffer.Seek(0);
         target >>= 1;
 
@@ -104,14 +103,10 @@ void dispatchUserMessage(bf_read &buffer, int type)
         if (!GetPlayerInfo(target, &info) || !GetPlayerInfo(caller, &info2))
             break;
 
-        auto team_name = teamname(team);
-        logging::Info("[%s] Vote called to kick %s [U:1:%u] for %s by %s [U:1:%u]", team_name, info.name, info.friendsID, reason, info2.name, info2.friendsID);
+        kicked_player = target;
+        logging::Info("Vote called to kick %s [U:1:%u] for %s by %s [U:1:%u]", info.name, info.friendsID, reason, info2.name, info2.friendsID);
         if (info.friendsID == g_ISteamUser->GetSteamID().GetAccountID())
         {
-            if (kickysay)
-            {
-                chat_stack::Say("Team plese push F2");
-            }
             was_local_player = true;
             local_kick_timer.update();
         }
@@ -127,24 +122,26 @@ void dispatchUserMessage(bf_read &buffer, int type)
 
             if (*vote_kickn && friendly_kicked)
             {
-                vote_command = { strfmt("vote %d option2", vote_id).get(), 0 };  // Set the delay to 0
+                
+              vote_command = { strfmt("vote %d option2", vote_id).get(), 0 };  // Set the delay to 0
                 if (*vote_rage_vote && !friendly_caller)
                     pl_caller.state = k_EState::RAGE;
             }
             else if (*vote_kicky && !friendly_kicked)
             {
-                vote_command = { strfmt("vote %d option1", vote_id).get(), 0 };  // Set the delay to 0
+            vote_command = { strfmt("vote %d option1", vote_id).get(), 0 };  // Set the delay to 0
             }
         }
         if (*chat_partysay)
         {
             char formated_string[256];
-            std::snprintf(formated_string, sizeof(formated_string), "[COWHOOK] [%s] votekick called: %s => %s (%s)", team_name, info2.name, info.name, reason);
-            re::CTFPartyClient::GTFPartyClient()->SendPartyChat(formated_string);
+            std::snprintf(formated_string, sizeof(formated_string), "[cowhook] votekick called: %s => %s (%s)", info2.name, info.name, reason);
+            if (chat_partysay)
+                re::CTFPartyClient::GTFPartyClient()->SendPartyChat(formated_string);
         }
 #if ENABLE_VISUALS
-        if (*chat)
-            PrintChat("\x07%06X%s\x01 called a votekick on \x07%06X%s\x01 for the reason \"%s\"", 0xe1ad01, info2.name, 0xe1ad01, info.name, reason);
+        if (chat)
+            PrintChat("Votekick called: \x07%06X%s\x01 => \x07%06X%s\x01 (%s)", colors::chat::team(g_pPlayerResource->getTeam(caller)), info2.name, colors::chat::team(g_pPlayerResource->getTeam(target)), info.name, reason);
 #endif
         break;
     }
@@ -152,7 +149,7 @@ void dispatchUserMessage(bf_read &buffer, int type)
     {
         logging::Info("Vote passed");
         // if (was_local_player && requeue)
-        //    tfmm::StartQueue();
+        //    tfmm::startQueue();
         break;
     }
     case 48:
@@ -160,16 +157,15 @@ void dispatchUserMessage(bf_read &buffer, int type)
         break;
     case 49:
         logging::Info("VoteSetup?");
-        [[fallthrough]];
+        break;
     default:
         break;
     }
 }
-
 static bool found_message = false;
-void onShutdown(const std::string &message)
+void onShutdown(std::string message)
 {
-    if (message.find("Generic_Kicked") == std::string::npos)
+    if (message.find("Generic_Kicked") == message.npos)
     {
         found_message = false;
         return;
@@ -179,7 +175,7 @@ void onShutdown(const std::string &message)
         found_message = false;
         return;
     }
-    if (*abandon_and_crash_on_kick)
+    if (abandon_and_crash_on_kick)
     {
         found_message = true;
         g_IEngine->ClientCmd_Unrestricted("tf_party_leave");
@@ -195,7 +191,7 @@ static void setup_paint_abandon()
         EC::Paint,
         []()
         {
-            if (!vote_command.content.empty() && vote_command.timer.test_and_set(vote_command.time))
+            if (vote_command.content != "" && vote_command.timer.test_and_set(vote_command.time))
             {
                 g_IEngine->ClientCmd_Unrestricted(vote_command.content.c_str());
                 vote_command.content = "";
@@ -204,8 +200,8 @@ static void setup_paint_abandon()
                 return;
             if (local_kick_timer.check(60000) || !local_kick_timer.test_and_set(10000) || !was_local_player)
                 return;
-            if (*abandon_and_crash_on_kick)
-                *(int *) nullptr = 0;
+            if (abandon_and_crash_on_kick)
+                *(int *) 0 = 0;
         },
         "vote_abandon_restart");
 }
@@ -225,7 +221,7 @@ class VoteEventListener : public IGameEventListener
 public:
     void FireGameEvent(KeyValues *event) override
     {
-        if (!*chat_casts || (!*chat_partysay && !*chat))
+        if (!*chat_casts || (!*chat_partysay && !chat))
             return;
         const char *name = event->GetName();
         if (!strcmp(name, "vote_cast"))
@@ -238,35 +234,20 @@ public:
             player_info_s info{};
             if (!GetPlayerInfo(eid, &info))
                 return;
-            if (*chat_partysay)
+            if (chat_partysay)
             {
                 char formated_string[256];
-                std::snprintf(formated_string, sizeof(formated_string), "[COWHOOK] %s voted %s", info.name, vote_option ? "No" : "Yes");
+                std::snprintf(formated_string, sizeof(formated_string), "[cowhook] %s [U:1:%u] %s", info.name, info.friendsID, vote_option ? "F2" : "F1");
 
                 re::CTFPartyClient::GTFPartyClient()->SendPartyChat(formated_string);
             }
 #if ENABLE_VISUALS
-            if (*chat)
-            {
-                switch (vote_option)
-                {
-                case true:
-                {
-                    PrintChat("\x07%06X%s\x01 voted \x07%06XNo\x01", 0xe1ad01, info.name, 0x00ff00);
-                    break;
-                }
-                case false:
-                {
-                    PrintChat("\x07%06X%s\x01 voted \x07%06XYes\x01", 0xe1ad01, info.name, 0xff0000);
-                    break;
-                }
-                }
-            }
+            if (chat)
+                PrintChat("\x07%06X%s\x01 [U:1:%u] %s", colors::chat::team(g_pPlayerResource->getTeam(eid)), info.name, info.friendsID, vote_option ? "F2" : "F1");
 #endif
         }
     }
 };
-
 static VoteEventListener listener{};
 static InitRoutine init(
     []()

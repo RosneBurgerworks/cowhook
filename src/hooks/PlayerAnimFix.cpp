@@ -1,7 +1,7 @@
 #include "common.hpp"
 #include "DetourHook.hpp"
 
-namespace hacks::animfix
+namespace hacks::tf2::animfix
 {
 static settings::Boolean enabled("misc.animfix.enabled", "false");
 DetourHook frameadvance_detour{};
@@ -37,8 +37,8 @@ float FrameAdvance_hook(IClientEntity *self, float flInterval)
         }
     }
 
-    auto original      = (FrameAdvance_t) frameadvance_detour.GetOriginalFunc();
-    float return_value = original(self, newInterval);
+    FrameAdvance_t original = (FrameAdvance_t) frameadvance_detour.GetOriginalFunc();
+    float return_value      = original(self, newInterval);
     frameadvance_detour.RestorePatch();
     return return_value;
 }
@@ -56,14 +56,14 @@ bool ShouldInterpolate_hook(IClientEntity *ent)
                 return false;
         }
     }
-    auto original = (ShouldInterpolate_t) shouldinterpolate_detour.GetOriginalFunc();
-    bool ret      = original(ent);
+    ShouldInterpolate_t original = (ShouldInterpolate_t) shouldinterpolate_detour.GetOriginalFunc();
+    bool ret                     = original(ent);
     shouldinterpolate_detour.RestorePatch();
     return ret;
 }
 
-// We need a non-crashing way to implement this. Currently, it will just cause crashes
-// due to race conditions that we cannot resolve
+// We need a non crashing way to implement this. Currently it will just cause crashes
+// due to race conditions That we cannot resolve
 /*std::mutex threadsafe_mutex;
 
 void CheckForSequenceChange_hook(int *_this, int *studiohdr, int sequence, bool forcenewsequence, bool bInterpolate)
@@ -71,10 +71,12 @@ void CheckForSequenceChange_hook(int *_this, int *studiohdr, int sequence, bool 
     bInterpolate       = false;
     auto new_studiohdr = studiohdr;
     if (enabled)
+    {
         new_studiohdr = nullptr;
+    }
 
     std::lock_guard<std::mutex> checkforsequencechance_mutex(threadsafe_mutex);
-    auto original = (CheckForSequenceChange_t) checkforsequencechange_detour.GetOriginalFunc();
+    CheckForSequenceChange_t original = (CheckForSequenceChange_t) checkforsequencechange_detour.GetOriginalFunc();
     original(_this, new_studiohdr, sequence, forcenewsequence, bInterpolate);
     checkforsequencechange_detour.RestorePatch();
 }*/
@@ -82,7 +84,7 @@ void CheckForSequenceChange_hook(int *_this, int *studiohdr, int sequence, bool 
 void LevelInit()
 {
     previous_simtimes.clear();
-    previous_simtimes.resize(g_GlobalVars->maxClients);
+    previous_simtimes.resize(g_IEngine->GetMaxClients());
 }
 
 static InitRoutine init(
@@ -91,10 +93,10 @@ static InitRoutine init(
         static auto ShouldInterpolate_signature = CSignature::GetClientSignature("55 89 E5 56 53 83 EC 10 A1 ? ? ? ? 8B 5D ? 8B 10 89 04 24 FF 52 ? 8B 53");
         shouldinterpolate_detour.Init(ShouldInterpolate_signature, (void *) ShouldInterpolate_hook);
 
-        /*static auto CheckForSequenceChange_signature = CSignature::GetClientSignature("55 89 E5 57 56 53 83 EC 1C 8B 45 ? 8B 75 ? 8B 4D ? 8B 7D");
+        /*static auto CheckForSequenceChange_signature = gSignatures.GetClientSignature("55 89 E5 57 56 53 83 EC 1C 8B 45 ? 8B 75 ? 8B 4D ? 8B 7D");
          checkforsequencechange_detour.Init(CheckForSequenceChange_signature, (void *) CheckForSequenceChange_hook);*/
 
-        static auto FrameAdvance_signature = CSignature::GetClientSignature("55 89 E5 57 56 53 83 EC 4C 8B 5D ? 80 BB ? ? ? ? 00 0F 85 ? ? ? ? 8B B3");
+        static auto FrameAdvance_signature = gSignatures.GetClientSignature("55 89 E5 57 56 53 83 EC 4C 8B 5D ? 80 BB ? ? ? ? 00 0F 85 ? ? ? ? 8B B3");
         frameadvance_detour.Init(FrameAdvance_signature, (void *) FrameAdvance_hook);
         EC::Register(EC::LevelInit, LevelInit, "levelinit_animfix");
         LevelInit();
@@ -109,4 +111,4 @@ static InitRoutine init(
             },
             "shutdown_animfix");
     });
-} // namespace hacks::animfix
+} // namespace hacks::tf2::animfix

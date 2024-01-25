@@ -13,14 +13,16 @@
 
 #include <SimpleIPC/ipcb.hpp>
 #include "pthread.h"
-#include <ctime>
+#include <time.h>
 
 class CatCommand;
 
 namespace ipc
 {
+
 namespace commands
 {
+
 constexpr unsigned execute_client_cmd      = 1;
 constexpr unsigned set_follow_steamid      = 2;
 constexpr unsigned execute_client_cmd_long = 3;
@@ -71,7 +73,7 @@ struct user_data_s
 
         int shots;     // TODO
         int hits;      // TODO
-        int headshots;
+        int headshots; // TODO
 
         int team;
         int role; // class

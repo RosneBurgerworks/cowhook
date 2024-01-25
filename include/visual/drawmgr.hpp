@@ -11,7 +11,7 @@
 
 extern std::mutex drawing_mutex;
 
-void RenderCheatVisuals();
+void render_cheat_visuals();
 
 void BeginCheatVisuals();
 void DrawCheatVisuals();

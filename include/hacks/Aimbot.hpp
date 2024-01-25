@@ -1,5 +1,5 @@
 /*
- * Aimbot.hpp
+ * HAimbot.h
  *
  *  Created on: Oct 8, 2016
  *      Author: nullifiedcat
@@ -12,34 +12,34 @@
 class ConVar;
 class IClientEntity;
 
-namespace hacks::aimbot
+namespace hacks::shared::aimbot
 {
+extern settings::Boolean ignore_cloak;
 extern unsigned last_target_ignore_timer;
-
+// Used to store aimbot data to prevent calculating it again
 // Functions used to calculate aimbot data, and if already calculated use it
 Vector PredictEntity(CachedEntity *entity);
 
-// Functions called by other functions for when certain game calls are run
+// Functions called by other functions for when certian game calls are run
 void Reset();
 
 // Stuff to make storing functions easy
-bool IsAiming();
+bool isAiming();
 CachedEntity *CurrentTarget();
 bool ShouldAim();
 CachedEntity *RetrieveBestTarget(bool aimkey_state);
 bool IsTargetStateGood(CachedEntity *entity);
 bool Aim(CachedEntity *entity);
 void DoAutoshoot(CachedEntity *target = nullptr);
-int NotVisibleHitbox(CachedEntity *target, int preferred);
-std::vector<Vector> GetHitpointsVischeck(CachedEntity *ent, int hitbox);
-bool small_box_checker(CachedEntity* target_entity);
-float ProjectileHitboxSize(int projectile_size);
-int AutoHitbox(CachedEntity *target);
-bool HitscanSpecialCases(CachedEntity *target_entity, int weapon_case);
-bool ProjectileSpecialCases(CachedEntity *target_entity, int weapon_case);
+int notVisibleHitbox(CachedEntity *target, int preferred);
+std::vector<Vector> getHitpointsVischeck(CachedEntity *ent, int hitbox);
+float projectileHitboxSize(int projectile_size);
+int autoHitbox(CachedEntity *target);
+bool hitscanSpecialCases(CachedEntity *target_entity, int weapon_case);
+bool projectileSpecialCases(CachedEntity *target_entity, int weapon_case);
 int BestHitbox(CachedEntity *target);
-bool IsHitboxMedium(int hitbox);
+bool isHitboxMedium(int hitbox);
 int ClosestHitbox(CachedEntity *target);
 void DoSlowAim(Vector &inputAngle);
 bool UpdateAimkey();
-} // namespace hacks::aimbot
+} // namespace hacks::shared::aimbot

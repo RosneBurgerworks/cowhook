@@ -1,3 +1,10 @@
+/*
+ * init.cpp
+ *
+ *  Created on: Jul 27, 2017
+ *      Author: nullifiedcat
+ */
+
 #include "init.hpp"
 
 std::stack<void (*)()> &init_stack()

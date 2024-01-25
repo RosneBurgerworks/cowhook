@@ -1,4 +1,3 @@
-
 /*
  * colors.hpp
  *
@@ -8,6 +7,9 @@
 
 #pragma once
 #include "config.h"
+#if ENABLE_GLEZ_DRAWING
+#include "glez/color.hpp"
+#endif
 
 class CachedEntity;
 #if ENABLE_VISUALS
@@ -26,21 +28,11 @@ constexpr unsigned orange    = 0xCF7336;
 
 constexpr unsigned team(int team)
 {
-    switch (team)
-    {
-    case 2:
-    {
+    if (team == 2)
         return red;
-    }
-    case 3:
-    {
+    if (team == 3)
         return blu;
-    }
-    default:
-    {
-        return white;
-    }
-    }
+    return white;
 }
 } // namespace chat
 
@@ -59,6 +51,23 @@ struct rgba_t
     constexpr rgba_t(float _r, float _g, float _b, float _a = 1.0f) : r(_r), g(_g), b(_b), a(_a){};
 
     explicit rgba_t(const char hex[6]);
+#if ENABLE_GLEZ_DRAWING
+    constexpr rgba_t(const glez::rgba &other) : r(other.r), g(other.g), b(other.b), a(other.a){};
+#endif
+
+#if ENABLE_GLEZ_DRAWING
+#if __clang__
+    operator glez::rgba() const
+    {
+        return *reinterpret_cast<const glez::rgba *>(this);
+    }
+#else
+    constexpr operator glez::rgba() const
+    {
+        return *reinterpret_cast<const glez::rgba *>(this);
+    }
+#endif
+#endif
 
     constexpr operator bool() const
     {
@@ -108,16 +117,16 @@ constexpr rgba_t black(0, 0, 0, 1);
 
 constexpr rgba_t pink = FromRGBA8(255, 105, 180, 255);
 
-extern rgba_t red;                                     // RED team user controlled
-extern rgba_t blu;                                     // BLU team user controlled
-extern rgba_t red_b;                                   // Background
-extern rgba_t blu_b;                                   // Background
-extern rgba_t red_v;                                   // Vaccinator
-extern rgba_t blu_v;                                   // Vaccinator
-extern rgba_t red_u;                                   // Ubercharge
-extern rgba_t blu_u;                                   // Ubercharge
-extern rgba_t gui;                                     // GUI color
-extern rgba_t target;                                  // Aimbot target color
+extern rgba_t red; // RED team user controlled
+extern rgba_t blu; // BLU team user controlled
+extern rgba_t red_b; // Background
+extern rgba_t blu_b; // Background
+extern rgba_t red_v; // Vaccinator
+extern rgba_t blu_v; // Vaccinator
+extern rgba_t red_u; // Ubercharge
+extern rgba_t blu_u;  // Ubercharge
+extern rgba_t gui;    // GUI color
+extern rgba_t target; // Aimbot target color
 constexpr rgba_t red_s  = FromRGBA8(237, 42, 42, 255); // Not user controlled
 constexpr rgba_t yellow = FromRGBA8(255, 255, 0, 255);
 constexpr rgba_t orange = FromRGBA8(255, 120, 0, 255);

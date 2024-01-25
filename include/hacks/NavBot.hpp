@@ -1,13 +1,6 @@
-/*
-
-NavBot.hpp
-
-*/
-
 #pragma once
 
-namespace hacks::NavBot
+namespace hacks::tf2::NavBot
 {
-extern bool isVisible;
 std::pair<CachedEntity *, float> getNearestPlayerDistance();
-} // namespace hacks::NavBot
+} // namespace hacks::tf2::NavBot

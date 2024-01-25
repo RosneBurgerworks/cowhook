@@ -6,6 +6,8 @@
  */
 
 #pragma once
+#ifndef __CATHOOK_COMMON_HPP
+#define __CATHOOK_COMMON_HPP
 
 #include "config.h"
 
@@ -37,18 +39,21 @@
 #include <visual/atlas.hpp>
 #endif
 
+#include "core/profiler.hpp"
 #include "core/offsets.hpp"
 #include <entitycache.hpp>
+#include "hoovy.hpp"
 #include <enums.hpp>
+#include "projlogging.hpp"
 #include "velocity.hpp"
-#include "globals.hpp"
+#include "globals.h"
 #include <helpers.hpp>
 #include "playerlist.hpp"
 #include <core/interfaces.hpp>
 #include <localplayer.hpp>
 #include <conditions.hpp>
 #include <core/logging.hpp>
-#include "playerresource.hpp"
+#include "playerresource.h"
 #include "sdk/usercmd.hpp"
 #include "trace.hpp"
 #include <core/cvwrapper.hpp>
@@ -78,14 +83,18 @@
 
 template <typename T> constexpr T _clamp(T _min, T _max, T _val)
 {
-    return _val > _max ? _max : _val < _min ? _min : _val;
+    return ((_val > _max) ? _max : ((_val < _min) ? _min : _val));
 }
 
 #define _FASTCALL __attribute__((fastcall))
 #define STRINGIFY(x) #x
 
+#include "gameinfo.hpp"
+
+#define SQR(x) (x) * (x)
+
 #define SUPER_VERBOSE_DEBUG false
-#if SUPER_VERBOSE_DEBUG
+#if SUPER_VERBOSE_DEBUG == true
 #define SVDBG(...) logging::Info(__VA_ARGS__)
 #else
 #define SVDBG(...)
@@ -95,4 +104,7 @@ template <typename T> constexpr T _clamp(T _min, T _max, T _val)
 #define DEG2RAD(x) (float) (x) * (PI / 180.0f)
 #endif
 
-#define GET_RENDER_CONTEXT (g_IMaterialSystem->GetRenderContext())
+#define STR(c) #c
+
+#define GET_RENDER_CONTEXT (IsTF2() ? g_IMaterialSystem->GetRenderContext() : g_IMaterialSystemHL->GetRenderContext())
+#endif

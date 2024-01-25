@@ -15,16 +15,18 @@ class IClientEntity;
 
 namespace trace
 {
+
 class FilterDefault : public ITraceFilter
 {
 public:
     IClientEntity *m_pSelf;
 
+public:
     virtual ~FilterDefault();
     FilterDefault();
-    bool ShouldHitEntity(IHandleEntity *entity, int mask) override;
+    virtual bool ShouldHitEntity(IHandleEntity *entity, int mask);
     void SetSelf(IClientEntity *self);
-    TraceType_t GetTraceType() const override;
+    virtual TraceType_t GetTraceType() const;
 };
 
 class FilterNoPlayer : public ITraceFilter
@@ -32,20 +34,34 @@ class FilterNoPlayer : public ITraceFilter
 public:
     IClientEntity *m_pSelf;
 
+public:
     virtual ~FilterNoPlayer();
     FilterNoPlayer();
-    bool ShouldHitEntity(IHandleEntity *entity, int mask) override;
+    virtual bool ShouldHitEntity(IHandleEntity *entity, int mask);
     void SetSelf(IClientEntity *self);
-    TraceType_t GetTraceType() const override;
+    virtual TraceType_t GetTraceType() const;
 };
 
+class FilterNoTeammates : public ITraceFilter
+{
+public:
+    IClientEntity *m_pSelf;
+
+public:
+    virtual ~FilterNoTeammates();
+    FilterNoTeammates();
+    virtual bool ShouldHitEntity(IHandleEntity *entity, int mask);
+    void SetSelf(IClientEntity *self);
+    virtual TraceType_t GetTraceType() const;
+};
 class FilterNavigation : public ITraceFilter
 {
+
 public:
     virtual ~FilterNavigation();
     FilterNavigation();
-    bool ShouldHitEntity(IHandleEntity *entity, int mask) override;
-    TraceType_t GetTraceType() const override;
+    virtual bool ShouldHitEntity(IHandleEntity *entity, int mask);
+    virtual TraceType_t GetTraceType() const;
 };
 
 class FilterNoEntity : public ITraceFilter
@@ -53,11 +69,12 @@ class FilterNoEntity : public ITraceFilter
 public:
     IClientEntity *m_pSelf;
 
+public:
     virtual ~FilterNoEntity();
     FilterNoEntity();
-    bool ShouldHitEntity(IHandleEntity *entity, int mask) override;
+    virtual bool ShouldHitEntity(IHandleEntity *entity, int mask);
     void SetSelf(IClientEntity *self);
-    TraceType_t GetTraceType() const override;
+    virtual TraceType_t GetTraceType() const;
 };
 
 class FilterPenetration : public ITraceFilter
@@ -66,12 +83,13 @@ public:
     IClientEntity *m_pSelf;
     IClientEntity *m_pIgnoreFirst;
 
+public:
     virtual ~FilterPenetration();
     FilterPenetration();
-    bool ShouldHitEntity(IHandleEntity *entity, int mask) override;
+    virtual bool ShouldHitEntity(IHandleEntity *entity, int mask);
     void SetSelf(IClientEntity *self);
     void Reset();
-    TraceType_t GetTraceType() const override;
+    virtual TraceType_t GetTraceType() const;
 };
 
 extern FilterDefault filter_default;
@@ -79,4 +97,5 @@ extern FilterNoPlayer filter_no_player;
 extern FilterNavigation filter_navigation;
 extern FilterNoEntity filter_no_entity;
 extern FilterPenetration filter_penetration;
+extern FilterNoTeammates filter_teammates;
 } // namespace trace

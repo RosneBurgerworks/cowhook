@@ -1,3 +1,11 @@
+//========= Copyright Valve Corporation, All rights reserved. ============//
+//
+// Purpose:
+//
+// $NoKeywords: $
+//
+//===========================================================================//
+
 #include "tier0/dbg.h"
 #include "mathlib/mathlib.h"
 #include "bone_setup.h"
@@ -17,6 +25,7 @@
 #include "posedebugger.h"
 #endif
 
+// memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
 #undef vec3_angle
@@ -82,7 +91,7 @@ CBoneCache *CBoneCache::CreateResource(const bonecacheparams_t &params)
     short studioToCachedIndex[MAXSTUDIOBONES];
     short cachedToStudioIndex[MAXSTUDIOBONES];
     int cachedBoneCount = 0;
-    for (int i = 0; i < params.pStudioHdr->numbones(); ++i)
+    for (int i = 0; i < params.pStudioHdr->numbones(); i++)
     {
         // skip bones that aren't part of the boneMask (and aren't the root bone)
         if (i != 0 && !(params.pStudioHdr->boneFlags(i) & params.boneMask))
@@ -146,7 +155,7 @@ void CBoneCache::UpdateBones(const matrix3x4_t *pBoneToWorld, int numbones, floa
     matrix3x4_t *pBones          = BoneArray();
     const short *pCachedToStudio = CachedToStudio();
 
-    for (int i = 0; i < m_cachedBoneCount; ++i)
+    for (int i = 0; i < m_cachedBoneCount; i++)
     {
         int index = pCachedToStudio[i];
         MatrixCopy(pBoneToWorld[index], pBones[i]);
@@ -168,7 +177,7 @@ void CBoneCache::ReadCachedBones(matrix3x4_t *pBoneToWorld)
 {
     matrix3x4_t *pBones          = BoneArray();
     const short *pCachedToStudio = CachedToStudio();
-    for (int i = 0; i < m_cachedBoneCount; ++i)
+    for (int i = 0; i < m_cachedBoneCount; i++)
     {
         MatrixCopy(pBones[i], pBoneToWorld[pCachedToStudio[i]]);
     }
@@ -179,7 +188,7 @@ void CBoneCache::ReadCachedBonePointers(matrix3x4_t **bones, int numbones)
     memset(bones, 0, sizeof(matrix3x4_t *) * numbones);
     matrix3x4_t *pBones          = BoneArray();
     const short *pCachedToStudio = CachedToStudio();
-    for (int i = 0; i < m_cachedBoneCount; ++i)
+    for (int i = 0; i < m_cachedBoneCount; i++)
     {
         bones[pCachedToStudio[i]] = pBones + i;
     }
@@ -470,7 +479,7 @@ void CalcBonePosition(int frame, float s, const Vector &basePos, const Vector &b
     if (s > 0.001f)
     {
         float v1, v2;
-        for (j = 0; j < 3; ++j)
+        for (j = 0; j < 3; j++)
         {
             ExtractAnimValue(frame, pPosV->pAnimvalue(j), baseBoneScale[j], v1, v2);
             pos[j] = v1 * (1.0 - s) + v2 * s;
@@ -478,7 +487,7 @@ void CalcBonePosition(int frame, float s, const Vector &basePos, const Vector &b
     }
     else
     {
-        for (j = 0; j < 3; ++j)
+        for (j = 0; j < 3; j++)
         {
             ExtractAnimValue(frame, pPosV->pAnimvalue(j), baseBoneScale[j], pos[j]);
         }
@@ -707,7 +716,7 @@ static void CalcZeroframeData(const CStudioHdr *pStudioHdr, const studiohdr_t *p
     // Msg("zeroframe %s\n", animdesc.pszName() );
     if (animdesc.zeroframecount == 1)
     {
-        for (j = 0; j < pAnimStudioHdr->numbones; ++j)
+        for (j = 0; j < pAnimStudioHdr->numbones; j++)
         {
             if (pAnimGroup)
                 i = pAnimGroup->masterBone[j];
@@ -752,7 +761,7 @@ static void CalcZeroframeData(const CStudioHdr *pStudioHdr, const studiohdr_t *p
         int i0 = max(index - 1, 0);
         int i1 = index;
         int i2 = min(index + 1, animdesc.zeroframecount - 1);
-        for (j = 0; j < pAnimStudioHdr->numbones; ++j)
+        for (j = 0; j < pAnimStudioHdr->numbones; j++)
         {
             if (pAnimGroup)
                 i = pAnimGroup->masterBone[j];
@@ -842,7 +851,7 @@ static void CalcVirtualAnimation(virtualmodel_t *pVModel, const CStudioHdr *pStu
     float *pweight = seqdesc.pBoneweight(0);
     pbone          = pStudioHdr->pBone(0);
 
-    for (int i = 0; i < pStudioHdr->numbones(); ++i)
+    for (int i = 0; i < pStudioHdr->numbones(); i++)
     {
         if (pStudioHdr->boneFlags(i) & boneMask)
         {
@@ -878,7 +887,8 @@ static void CalcVirtualAnimation(virtualmodel_t *pVModel, const CStudioHdr *pStu
         return;
     }
 
-    while (panim && panim->bone < -1)
+    // FIXME: change encoding so that bone -1 is never the case
+    while (panim && panim->bone < 255)
     {
         int j = pAnimGroup->masterBone[panim->bone];
         if (j >= 0 && (pStudioHdr->boneFlags(j) & boneMask))
@@ -910,7 +920,7 @@ static void CalcVirtualAnimation(virtualmodel_t *pVModel, const CStudioHdr *pStu
         CBoneBitList boneComputed;
 
         int i;
-        for (i = 0; i < animdesc.numlocalhierarchy; ++i)
+        for (i = 0; i < animdesc.numlocalhierarchy; i++)
         {
             mstudiolocalhierarchy_t *pHierarchy = animdesc.pHierarchy(i);
 
@@ -981,7 +991,7 @@ static void CalcAnimation(const CStudioHdr *pStudioHdr, Vector *pos, Quaternion 
     {
         // Msg("zeroframe %s\n", animdesc.pszName() );
         // pre initialize
-        for (int i = 0; i < pStudioHdr->numbones(); ++i, pbone++, pweight++)
+        for (int i = 0; i < pStudioHdr->numbones(); i++, pbone++, pweight++)
         {
             if (*pweight > 0 && (pStudioHdr->boneFlags(i) & boneMask))
             {
@@ -1004,7 +1014,7 @@ static void CalcAnimation(const CStudioHdr *pStudioHdr, Vector *pos, Quaternion 
     }
 
     // BUGBUG: the sequence, the anim, and the model can have all different bone mappings.
-    for (int i = 0; i < pStudioHdr->numbones(); ++i, pbone++, pweight++)
+    for (int i = 0; i < pStudioHdr->numbones(); i++, pbone++, pweight++)
     {
         if (panim && panim->bone == i)
         {
@@ -1049,7 +1059,7 @@ static void CalcAnimation(const CStudioHdr *pStudioHdr, Vector *pos, Quaternion 
         CBoneBitList boneComputed;
 
         int i;
-        for (i = 0; i < animdesc.numlocalhierarchy; ++i)
+        for (i = 0; i < animdesc.numlocalhierarchy; i++)
         {
             mstudiolocalhierarchy_t *pHierarchy = animdesc.pHierarchy(i);
 
@@ -1182,7 +1192,7 @@ void WorldSpaceSlerp(const CStudioHdr *pStudioHdr, Quaternion q1[MAXSTUDIOBONES]
 
     mstudiobone_t *pbone = pStudioHdr->pBone(0);
 
-    for (i = 0; i < pStudioHdr->numbones(); ++i)
+    for (i = 0; i < pStudioHdr->numbones(); i++)
     {
         // skip unused bones
         if (!(pStudioHdr->boneFlags(i) & boneMask))
@@ -1295,7 +1305,7 @@ void SlerpBones(const CStudioHdr *pStudioHdr, Quaternion q1[MAXSTUDIOBONES], Vec
     // Build weightlist for all bones
     int nBoneCount = pStudioHdr->numbones();
     float *pS2     = (float *) stackalloc(nBoneCount * sizeof(float));
-    for (i = 0; i < nBoneCount; ++i)
+    for (i = 0; i < nBoneCount; i++)
     {
         // skip unused bones
         if (!(pStudioHdr->boneFlags(i) & boneMask))
@@ -1324,7 +1334,7 @@ void SlerpBones(const CStudioHdr *pStudioHdr, Quaternion q1[MAXSTUDIOBONES], Vec
     float s1, s2;
     if (seqdesc.flags & STUDIO_DELTA)
     {
-        for (i = 0; i < nBoneCount; ++i)
+        for (i = 0; i < nBoneCount; i++)
         {
             s2 = pS2[i];
             if (s2 <= 0.0f)
@@ -1366,7 +1376,7 @@ void SlerpBones(const CStudioHdr *pStudioHdr, Quaternion q1[MAXSTUDIOBONES], Vec
     }
 
     QuaternionAligned q3;
-    for (i = 0; i < nBoneCount; ++i)
+    for (i = 0; i < nBoneCount; i++)
     {
         s2 = pS2[i];
         if (s2 <= 0.0f)
@@ -1436,7 +1446,7 @@ void BlendBones(const CStudioHdr *pStudioHdr, Quaternion q1[MAXSTUDIOBONES], Vec
     else if (s >= 1.0)
     {
         Assert(0); // shouldn't have been called
-        for (i = 0; i < pStudioHdr->numbones(); ++i)
+        for (i = 0; i < pStudioHdr->numbones(); i++)
         {
             // skip unused bones
             if (!(pStudioHdr->boneFlags(i) & boneMask))
@@ -1465,7 +1475,7 @@ void BlendBones(const CStudioHdr *pStudioHdr, Quaternion q1[MAXSTUDIOBONES], Vec
     float s2 = s;
     float s1 = 1.0 - s2;
 
-    for (i = 0; i < pStudioHdr->numbones(); ++i)
+    for (i = 0; i < pStudioHdr->numbones(); i++)
     {
         // skip unused bones
         if (!(pStudioHdr->boneFlags(i) & boneMask))
@@ -1523,7 +1533,7 @@ void ScaleBones(const CStudioHdr *pStudioHdr, Quaternion q1[MAXSTUDIOBONES], Vec
     float s2 = s;
     float s1 = 1.0 - s2;
 
-    for (i = 0; i < pStudioHdr->numbones(); ++i)
+    for (i = 0; i < pStudioHdr->numbones(); i++)
     {
         // skip unused bones
         if (!(pStudioHdr->boneFlags(i) & boneMask))
@@ -1656,7 +1666,7 @@ void InitPose(const CStudioHdr *pStudioHdr, Vector pos[], Quaternion q[], int bo
 {
     if (!pStudioHdr->pLinearBones())
     {
-        for (int i = 0; i < pStudioHdr->numbones(); ++i)
+        for (int i = 0; i < pStudioHdr->numbones(); i++)
         {
             if (pStudioHdr->boneFlags(i) & boneMask)
             {
@@ -1669,7 +1679,7 @@ void InitPose(const CStudioHdr *pStudioHdr, Vector pos[], Quaternion q[], int bo
     else
     {
         mstudiolinearbone_t *pLinearBones = pStudioHdr->pLinearBones();
-        for (int i = 0; i < pStudioHdr->numbones(); ++i)
+        for (int i = 0; i < pStudioHdr->numbones(); i++)
         {
             if (pStudioHdr->boneFlags(i) & boneMask)
             {
@@ -1817,7 +1827,7 @@ bool CalcPoseSingle(const CStudioHdr *pStudioHdr, Vector pos[], Quaternion q[], 
         cycle     = flTime * cps;
         cycle     = cycle - (int) cycle;
     }
-     (seqdesc.flags & STUDIO_CYCLEPOSE);
+    else if (seqdesc.flags & STUDIO_CYCLEPOSE)
     {
         int iPose = pStudioHdr->GetSharedPoseParameter(sequence, seqdesc.cycleposeindex);
         if (iPose != -1)
@@ -1833,7 +1843,7 @@ bool CalcPoseSingle(const CStudioHdr *pStudioHdr, Vector pos[], Quaternion q[], 
             cycle = 0.0f;
         }
     }
-    if (cycle < 0 || cycle >= 1)
+    else if (cycle < 0 || cycle >= 1)
     {
         if (seqdesc.flags & STUDIO_LOOPING)
         {
@@ -1981,7 +1991,7 @@ bool CalcPoseSingle(const CStudioHdr *pStudioHdr, Vector pos[], Quaternion q[], 
 //-----------------------------------------------------------------------------
 void CBoneSetup::AddSequenceLayers(Vector pos[], Quaternion q[], mstudioseqdesc_t &seqdesc, int sequence, float cycle, float flWeight, float flTime, CIKContext *pIKContext)
 {
-    for (int i = 0; i < seqdesc.numautolayers; ++i)
+    for (int i = 0; i < seqdesc.numautolayers; i++)
     {
         mstudioautolayer_t *pLayer = seqdesc.pAutolayer(i);
 
@@ -2069,7 +2079,7 @@ void CBoneSetup::AddLocalLayers(Vector pos[], Quaternion q[], mstudioseqdesc_t &
         return;
     }
 
-    for (int i = 0; i < seqdesc.numautolayers; ++i)
+    for (int i = 0; i < seqdesc.numautolayers; i++)
     {
         mstudioautolayer_t *pLayer = seqdesc.pAutolayer(i);
 
@@ -2296,7 +2306,7 @@ void CalcBoneAdj(const CStudioHdr *pStudioHdr, Vector pos[], Quaternion q[], con
     RadianEuler a0;
     Quaternion q0;
 
-    for (j = 0; j < pStudioHdr->numbonecontrollers(); ++j)
+    for (j = 0; j < pStudioHdr->numbonecontrollers(); j++)
     {
         pbonecontroller = pStudioHdr->pBonecontroller(j);
         k               = pbonecontroller->bone;
@@ -2407,11 +2417,11 @@ public:
 
     static float findD(float a, float b, float c)
     {
-        return (c + (Sqr(a) - Sqr(b)) / c) / 2;
+        return (c + (a * a - b * b) / c) / 2;
     }
     static float findE(float a, float d)
     {
-        return sqrt(Sqr(a) - Sqr(d));
+        return sqrt(a * a - d * d);
     }
 
     // This leads to a solution to the more general problem:
@@ -2447,14 +2457,14 @@ public:
 
         // Minv defines a coordinate system whose x axis contains P, so X = unit(P).
         int i;
-        for (i = 0; i < 3; ++i)
+        for (i = 0; i < 3; i++)
             X[i] = P[i];
         normalize(X);
 
         // Its y axis is perpendicular to P, so Y = unit( E - X(E�X) ).
 
         float dDOTx = dot(D, X);
-        for (i = 0; i < 3; ++i)
+        for (i = 0; i < 3; i++)
             Y[i] = D[i] - dDOTx * X[i];
         normalize(Y);
 
@@ -2464,7 +2474,7 @@ public:
 
         // Mfwd = (Minv)T, since transposing inverts a rotation matrix.
 
-        for (i = 0; i < 3; ++i)
+        for (i = 0; i < 3; i++)
         {
             Mfwd[i][0] = Minv[0][i];
             Mfwd[i][1] = Minv[1][i];
@@ -2481,13 +2491,13 @@ public:
 
     static float length(float const v[])
     {
-        return FastSqrt(dot(v, v));
+        return sqrt(dot(v, v));
     }
 
     static void normalize(float v[])
     {
         float norm = length(v);
-        for (int i = 0; i < 3; ++i)
+        for (int i = 0; i < 3; i++)
             v[i] /= norm;
     }
 
@@ -2500,7 +2510,7 @@ public:
 
     static void rot(float const M[3][3], float const src[], float dst[])
     {
-        for (int i = 0; i < 3; ++i)
+        for (int i = 0; i < 3; i++)
             dst[i] = dot(M[i], src);
     }
 };
@@ -2525,13 +2535,9 @@ bool Studio_SolveIK(mstudioikchain_t *pikchain, Vector &targetFoot, matrix3x4_t 
 {
     if (pikchain->pLink(0)->kneeDir.LengthSqr() > 0.0)
     {
-            Vector targetKneeDir, targetKneePos;
-            // Calculate the knee length based on the length of the leg
-            Vector hipPos, anklePos;
-        MatrixPosition(pBoneToWorld[pikchain->pLink(0)->bone], hipPos);
-        MatrixPosition(pBoneToWorld[pikchain->pLink(2)->bone], anklePos);
-        float legLength = (anklePos - hipPos).Length();
-        Vector tmp = pikchain->pLink(0)->kneeDir * legLength;
+        Vector targetKneeDir, targetKneePos;
+        // FIXME: knee length should be as long as the legs
+        Vector tmp = pikchain->pLink(0)->kneeDir;
         VectorRotate(tmp, pBoneToWorld[pikchain->pLink(0)->bone], targetKneeDir);
         MatrixPosition(pBoneToWorld[pikchain->pLink(1)->bone], targetKneePos);
         return Studio_SolveIK(pikchain->pLink(0)->bone, pikchain->pLink(1)->bone, pikchain->pLink(2)->bone, targetFoot, targetKneePos, targetKneeDir, pBoneToWorld);
@@ -2642,16 +2648,13 @@ bool Studio_SolveIK(int iThigh, int iKnee, int iFoot, Vector &targetFoot, Vector
 
     // debugLine( worldKnee, worldThigh + ikTargetKnee, 0, 0, 255, true, 0 );
 
-    int color[3] = { 0, 255, 0 };
+   
 
     // too far away? (0.9998 is about 1 degree)
     if (ikFoot.Length() > (l1 + l2) * KNEEMAX_EPSILON)
     {
         VectorNormalize(ikFoot);
         VectorScale(ikFoot, (l1 + l2) * KNEEMAX_EPSILON, ikFoot);
-        color[0] = 255;
-        color[1] = 0;
-        color[2] = 0;
     }
 
     // too close?
@@ -2881,7 +2884,7 @@ bool Studio_IKSequenceError(const CStudioHdr *pStudioHdr, mstudioseqdesc_t &seqd
     mstudioikrule_t *prevRule = NULL;
 
     // find overall influence
-    for (i = 0; i < 4; ++i)
+    for (i = 0; i < 4; i++)
     {
         if (weight[i])
         {
@@ -2957,7 +2960,7 @@ bool Studio_IKSequenceError(const CStudioHdr *pStudioHdr, mstudioseqdesc_t &seqd
 
     // find target error
     float total = 0.0f;
-    for (i = 0; i < 4; ++i)
+    for (i = 0; i < 4; i++)
     {
         if (weight[i])
         {
@@ -3120,7 +3123,7 @@ void CIKContext::AddDependencies(mstudioseqdesc_t &seqdesc, int iSequence, float
     Studio_SeqAnims(m_pStudioHdr, seqdesc, iSequence, poseParameters, panim, weight);
 
     // FIXME: add proper number of rules!!!
-    for (i = 0; i < seqdesc.numikrules; ++i)
+    for (i = 0; i < seqdesc.numikrules; i++)
     {
         if (!Studio_IKSequenceError(m_pStudioHdr, seqdesc, iSequence, flCycle, i, poseParameters, panim, weight, ikrule))
             continue;
@@ -3180,7 +3183,7 @@ void CIKContext::AddAutoplayLocks(Vector pos[], Quaternion q[])
     int ikOffset = m_ikLock.AddMultipleToTail(m_pStudioHdr->GetNumIKAutoplayLocks());
     memset(&m_ikLock[ikOffset], 0, sizeof(ikcontextikrule_t) * m_pStudioHdr->GetNumIKAutoplayLocks());
 
-    for (int i = 0; i < m_pStudioHdr->GetNumIKAutoplayLocks(); ++i)
+    for (int i = 0; i < m_pStudioHdr->GetNumIKAutoplayLocks(); i++)
     {
         const mstudioiklock_t &lock = ((CStudioHdr *) m_pStudioHdr)->pIKAutoplayLock(i);
         mstudioikchain_t *pchain    = m_pStudioHdr->pIKChain(lock.chain);
@@ -3204,7 +3207,6 @@ void CIKContext::AddAutoplayLocks(Vector pos[], Quaternion q[])
         // save off current knee direction
         if (pchain->pLink(0)->kneeDir.LengthSqr() > 0.0)
         {
-            Vector tmp = pchain->pLink(0)->kneeDir;
             VectorRotate(pchain->pLink(0)->kneeDir, boneToWorld[pchain->pLink(0)->bone], ikrule.kneeDir);
             MatrixPosition(boneToWorld[pchain->pLink(1)->bone], ikrule.kneePos);
         }
@@ -3238,7 +3240,7 @@ void CIKContext::AddSequenceLocks(mstudioseqdesc_t &seqdesc, Vector pos[], Quate
     int ikOffset = m_ikLock.AddMultipleToTail(seqdesc.numiklocks);
     memset(&m_ikLock[ikOffset], 0, sizeof(ikcontextikrule_t) * seqdesc.numiklocks);
 
-    for (int i = 0; i < seqdesc.numiklocks; ++i)
+    for (int i = 0; i < seqdesc.numiklocks; i++)
     {
         mstudioiklock_t *plock   = seqdesc.pIKLock(i);
         mstudioikchain_t *pchain = m_pStudioHdr->pIKChain(plock->chain);
@@ -3437,7 +3439,7 @@ void CIKTarget::SetPosWithNormalOffset(const Vector &pos, const Vector &normal)
     else if (normal.z > 0.707)
     {
         // tan == sin / cos
-        float tan = FastSqrt(1 - Sqr(normal.z)) / normal.z;
+        float tan = sqrt(1 - normal.z * normal.z) / normal.z;
         est.pos.z = est.pos.z - est.radius * tan;
     }
     else
@@ -3498,7 +3500,7 @@ void CIKTarget::MoveReferenceFrame(Vector &deltaPos, QAngle &deltaAngles)
 void CIKContext::ClearTargets(void)
 {
     int i;
-    for (i = 0; i < m_target.Count(); ++i)
+    for (i = 0; i < m_target.Count(); i++)
     {
         m_target[i].latched.iFramecounter = -9999;
     }
@@ -3513,7 +3515,7 @@ void CIKContext::UpdateTargets(Vector pos[], Quaternion q[], matrix3x4_t boneToW
 {
     int i, j;
 
-    for (i = 0; i < m_target.Count(); ++i)
+    for (i = 0; i < m_target.Count(); i++)
     {
         m_target[i].est.flWeight = 0.0f;
         m_target[i].est.latched  = 1.0f;
@@ -3527,9 +3529,9 @@ void CIKContext::UpdateTargets(Vector pos[], Quaternion q[], matrix3x4_t boneToW
 
     AutoIKRelease();
 
-    for (j = 0; j < m_ikChainRule.Count(); ++j)
+    for (j = 0; j < m_ikChainRule.Count(); j++)
     {
-        for (i = 0; i < m_ikChainRule.Element(j).Count(); ++i)
+        for (i = 0; i < m_ikChainRule.Element(j).Count(); i++)
         {
             ikcontextikrule_t *pRule = &m_ikChainRule.Element(j).Element(i);
 
@@ -3610,7 +3612,7 @@ void CIKContext::UpdateTargets(Vector pos[], Quaternion q[], matrix3x4_t boneToW
         }
     }
 
-    for (i = 0; i < m_target.Count(); ++i)
+    for (i = 0; i < m_target.Count(); i++)
     {
         CIKTarget *pTarget = &m_target[i];
         if (pTarget->est.flWeight > 0.0)
@@ -3749,7 +3751,7 @@ void CIKContext::AutoIKRelease(void)
 {
     int i;
 
-    for (i = 0; i < m_target.Count(); ++i)
+    for (i = 0; i < m_target.Count(); i++)
     {
         CIKTarget *pTarget = &m_target[i];
 
@@ -3850,7 +3852,7 @@ void CIKContext::SolveDependencies(Vector pos[], Quaternion q[], matrix3x4_t bon
     ikchainresult_t chainResult[32]; // allocate!!!
 
     // init chain rules
-    for (i = 0; i < m_pStudioHdr->numikchains(); ++i)
+    for (i = 0; i < m_pStudioHdr->numikchains(); i++)
     {
         mstudioikchain_t *pchain      = m_pStudioHdr->pIKChain(i);
         ikchainresult_t *pChainResult = &chainResult[i];
@@ -3869,9 +3871,9 @@ void CIKContext::SolveDependencies(Vector pos[], Quaternion q[], matrix3x4_t bon
         MatrixAngles(boneToWorld[bone], pChainResult->q, pChainResult->pos);
     }
 
-    for (j = 0; j < m_ikChainRule.Count(); ++j)
+    for (j = 0; j < m_ikChainRule.Count(); j++)
     {
-        for (i = 0; i < m_ikChainRule.Element(j).Count(); ++i)
+        for (i = 0; i < m_ikChainRule.Element(j).Count(); i++)
         {
             ikcontextikrule_t *pRule      = &m_ikChainRule.Element(j).Element(i);
             ikchainresult_t *pChainResult = &chainResult[pRule->chain];
@@ -3953,7 +3955,7 @@ void CIKContext::SolveDependencies(Vector pos[], Quaternion q[], matrix3x4_t bon
         }
     }
 
-    for (i = 0; i < m_target.Count(); ++i)
+    for (i = 0; i < m_target.Count(); i++)
     {
         CIKTarget *pTarget = &m_target[i];
 
@@ -3991,7 +3993,7 @@ void CIKContext::SolveDependencies(Vector pos[], Quaternion q[], matrix3x4_t bon
         }
     }
 
-    for (i = 0; i < m_pStudioHdr->numikchains(); ++i)
+    for (i = 0; i < m_pStudioHdr->numikchains(); i++)
     {
         ikchainresult_t *pChainResult = &chainResult[i];
         mstudioikchain_t *pchain      = m_pStudioHdr->pIKChain(i);
@@ -4002,16 +4004,13 @@ void CIKContext::SolveDependencies(Vector pos[], Quaternion q[], matrix3x4_t bon
             MatrixPosition(boneToWorld[pchain->pLink(2)->bone], tmp);
             // debugLine( pChainResult->pos, tmp, 255, 255, 255, true, 0.1 );
 
-           // do exact IK solution once per link
-for (int i = 0; i < pchain->numlinks; ++i)
-{
+            // do exact IK solution
+            // FIXME: once per link!
             if (Studio_SolveIK(pchain, pChainResult->pos, boneToWorld))
             {
                 Vector p3;
                 MatrixGetColumn(boneToWorld[pchain->pLink(2)->bone], 3, p3);
                 QuaternionMatrix(pChainResult->q, p3, boneToWorld[pchain->pLink(2)->bone]);
-    }
-}
 
                 // rebuild chain
                 // FIXME: is this needed if everyone past this uses the boneToWorld array?
@@ -4032,6 +4031,36 @@ for (int i = 0; i < pchain->numlinks; ++i)
         }
     }
 
+#if 0
+        Vector p1, p2, p3;
+        Quaternion q1, q2, q3;
+
+        // current p and q
+        MatrixAngles( boneToWorld[bone], q1, p1 );
+
+
+        // target p and q
+        MatrixAngles( worldTarget, q2, p2 );
+
+        // blend in position and angles
+        p3 = p1 * (1.0 - m_ikRule[i].flWeight ) + p2 * m_ikRule[i].flWeight;
+
+        // do exact IK solution
+        // FIXME: once per link!
+        Studio_SolveIK(pchain, p3, boneToWorld );
+
+        // force angle (bad?)
+        QuaternionSlerp( q1, q2, m_ikRule[i].flWeight, q3 );
+        MatrixGetColumn( boneToWorld[bone], 3, p3 );
+        QuaternionMatrix( q3, p3, boneToWorld[bone] );
+
+        // rebuild chain
+        SolveBone( m_pStudioHdr, pchain->pLink( 2 )->bone, boneToWorld, pos, q );
+        SolveBone( m_pStudioHdr, pchain->pLink( 1 )->bone, boneToWorld, pos, q );
+        SolveBone( m_pStudioHdr, pchain->pLink( 0 )->bone, boneToWorld, pos, q );
+#endif
+}
+
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
@@ -4042,7 +4071,7 @@ void CIKContext::SolveAutoplayLocks(Vector pos[], Quaternion q[])
     CBoneBitList boneComputed;
     int i;
 
-    for (i = 0; i < m_ikLock.Count(); ++i)
+    for (i = 0; i < m_ikLock.Count(); i++)
     {
         const mstudioiklock_t &lock = ((CStudioHdr *) m_pStudioHdr)->pIKAutoplayLock(i);
         SolveLock(&lock, i, pos, q, boneToWorld, boneComputed);
@@ -4060,7 +4089,7 @@ void CIKContext::SolveSequenceLocks(mstudioseqdesc_t &seqdesc, Vector pos[], Qua
     CBoneBitList boneComputed;
     int i;
 
-    for (i = 0; i < m_ikLock.Count(); ++i)
+    for (i = 0; i < m_ikLock.Count(); i++)
     {
         mstudioiklock_t *plock = seqdesc.pIKLock(i);
         SolveLock(plock, i, pos, q, boneToWorld, boneComputed);
@@ -4086,7 +4115,7 @@ void CIKContext::AddAllLocks(Vector pos[], Quaternion q[])
     int ikOffset = m_ikLock.AddMultipleToTail(m_pStudioHdr->GetNumIKChains());
     memset(&m_ikLock[ikOffset], 0, sizeof(ikcontextikrule_t) * m_pStudioHdr->GetNumIKChains());
 
-    for (int i = 0; i < m_pStudioHdr->GetNumIKChains(); ++i)
+    for (int i = 0; i < m_pStudioHdr->GetNumIKChains(); i++)
     {
         mstudioikchain_t *pchain = m_pStudioHdr->pIKChain(i);
         int bone                 = pchain->pLink(2)->bone;
@@ -4109,7 +4138,7 @@ void CIKContext::AddAllLocks(Vector pos[], Quaternion q[])
         // save off current knee direction
         if (pchain->pLink(0)->kneeDir.LengthSqr() > 0.0)
         {
-            Vector tmp = pchain->pLink(0)->kneeDir;
+          
             VectorRotate(pchain->pLink(0)->kneeDir, boneToWorld[pchain->pLink(0)->bone], ikrule.kneeDir);
             MatrixPosition(boneToWorld[pchain->pLink(1)->bone], ikrule.kneePos);
         }
@@ -4133,7 +4162,7 @@ void CIKContext::SolveAllLocks(Vector pos[], Quaternion q[])
 
     mstudioiklock_t lock;
 
-    for (i = 0; i < m_ikLock.Count(); ++i)
+    for (i = 0; i < m_ikLock.Count(); i++)
     {
         lock.chain          = i;
         lock.flPosWeight    = 1.0;
@@ -4208,7 +4237,7 @@ void CBoneSetup::CalcAutoplaySequences(Vector pos[], Quaternion q[], float flRea
 
     unsigned short *pList = NULL;
     int count             = m_pStudioHdr->GetAutoplayList(&pList);
-    for (i = 0; i < count; ++i)
+    for (i = 0; i < count; i++)
     {
         int sequenceIndex         = pList[i];
         mstudioseqdesc_t &seqdesc = ((CStudioHdr *) m_pStudioHdr)->pSeqdesc(sequenceIndex);
@@ -4247,7 +4276,7 @@ void Studio_BuildMatrices(const CStudioHdr *pStudioHdr, const QAngle &angles, co
     {
         // all bones
         chainlength = pStudioHdr->numbones();
-        for (i = 0; i < pStudioHdr->numbones(); ++i)
+        for (i = 0; i < pStudioHdr->numbones(); i++)
         {
             chain[chainlength - i - 1] = i;
         }
@@ -4388,27 +4417,20 @@ void DoAxisInterpBone(mstudiobone_t *pbones, int ibone, CBoneAccessor &bonetowor
         p3 = &pProc->pos[5];
     }
 
-   Vector p;
-Quaternion v, tmp;
-
-if (a1 + a2 + a3 > 0) {
-    float t = 1.0f / (a1 + a2 + a3);
-
-    // Three-way Quaternion Slerp
-    QuaternionSlerp(*q2, *q1, a1 / (a1 + a2), tmp);
-    QuaternionSlerp(tmp, *q3, a3 / (a1 + a2 + a3), v);
-    QuaternionNormalize(v);
-
-    // Three-way Vector Lerp
-    VectorScale(*p1, a1, p);
-    VectorMA(p, a2, *p2, p);
-    VectorMA(p, a3, *p3, p);
-    VectorScale(p, t, p);
-}
-else {
-    p = *p1;
-    v = *q1;
-}
+    // do a three-way blend
+    Vector p;
+    Quaternion v, tmp;
+    if (a1 + a2 > 0)
+    {
+        float t = 1.0 / (a1 + a2 + a3);
+        // FIXME: do a proper 3-way Quat blend!
+        QuaternionSlerp(*q2, *q1, a1 / (a1 + a2), tmp);
+        QuaternionSlerp(tmp, *q3, a3 * t, v);
+        VectorScale(*p1, a1 * t, p);
+        VectorMA(p, a2 * t, *p2, p);
+        VectorMA(p, a3 * t, *p3, p);
+    }
+    else
     {
         QuaternionSlerp(*q3, *q3, 0, v); // ??? no quat copy?
         p = *p3;
@@ -4445,7 +4467,7 @@ void DoQuatInterpBone(mstudiobone_t *pbones, int ibone, CBoneAccessor &bonetowor
         MatrixAngles(controlmatrix, src, pos); // FIXME: make a version without pos
 
         int i;
-        for (i = 0; i < pProc->numtriggers; ++i)
+        for (i = 0; i < pProc->numtriggers; i++)
         {
             float dot = fabs(QuaternionDotProduct(pProc->pTrigger(i)->trigger, src));
             // FIXME: a fast acos should be acceptable
@@ -4467,7 +4489,7 @@ void DoQuatInterpBone(mstudiobone_t *pbones, int ibone, CBoneAccessor &bonetowor
         quat.Init(0, 0, 0, 0);
         pos.Init();
 
-        for (i = 0; i < pProc->numtriggers; ++i)
+        for (i = 0; i < pProc->numtriggers; i++)
         {
             if (weight[i])
             {
@@ -4681,7 +4703,7 @@ bool CalcProceduralBone(const CStudioHdr *pStudioHdr, int iBone, CBoneAccessor &
 static mstudiobonecontroller_t *FindController(const CStudioHdr *pStudioHdr, int iController)
 {
     // find first controller that matches the index
-    for (int i = 0; i < pStudioHdr->numbonecontrollers(); ++i)
+    for (int i = 0; i < pStudioHdr->numbonecontrollers(); i++)
     {
         if (pStudioHdr->pBonecontroller(i)->inputfield == iController)
             return pStudioHdr->pBonecontroller(i);
@@ -4886,7 +4908,7 @@ static int ClipRayToHitbox(const Ray_t &ray, mstudiobbox_t *pbox, matrix3x4_t &m
     extent.Init();
 
     // check box axes for separation
-    for (int j = 0; j < 3; ++j)
+    for (int j = 0; j < 3; j++)
     {
         extent[j]   = delta2.x * matrix[0][j] + delta2.y * matrix[1][j] + delta2.z * matrix[2][j];
         uextent[j]  = fabsf(extent[j]);
@@ -4969,7 +4991,7 @@ bool SweepBoxToStudio(IPhysicsSurfaceProps *pProps, const Ray_t &ray, CStudioHdr
     // OPTIMIZE: Partition these?
     Ray_t clippedRay = ray;
     int hitbox       = -1;
-    for (int i = 0; i < set->numhitboxes; ++i)
+    for (int i = 0; i < set->numhitboxes; i++)
     {
         mstudiobbox_t *pbox = set->pHitbox(i);
 
@@ -5032,7 +5054,7 @@ bool TraceToStudio(IPhysicsSurfaceProps *pProps, const Ray_t &ray, CStudioHdr *p
     int hitside = -1;
 
     // OPTIMIZE: Partition these?
-    for (int i = 0; i < set->numhitboxes; ++i)
+    for (int i = 0; i < set->numhitboxes; i++)
     {
         mstudiobbox_t *pbox = set->pHitbox(i);
 
@@ -5181,7 +5203,7 @@ int Studio_MaxFrame(const CStudioHdr *pStudioHdr, int iSequence, const float pos
     Studio_SeqAnims(pStudioHdr, seqdesc, iSequence, poseParameter, panim, weight);
 
     float maxFrame = 0;
-    for (int i = 0; i < 4; ++i)
+    for (int i = 0; i < 4; i++)
     {
         if (weight[i] > 0)
         {
@@ -5192,7 +5214,8 @@ int Studio_MaxFrame(const CStudioHdr *pStudioHdr, int iSequence, const float pos
     if (maxFrame > 1)
         maxFrame -= 1;
 
-    return (int) round(maxFrame);
+    // FIXME: why does the weights sometimes not exactly add it 1.0 and this sometimes rounds down?
+    return (maxFrame + 0.01);
 }
 
 //-----------------------------------------------------------------------------
@@ -5209,7 +5232,7 @@ float Studio_FPS(const CStudioHdr *pStudioHdr, int iSequence, const float posePa
 
     float t = 0;
 
-    for (int i = 0; i < 4; ++i)
+    for (int i = 0; i < 4; i++)
     {
         if (weight[i] > 0)
         {
@@ -5232,7 +5255,7 @@ float Studio_CPS(const CStudioHdr *pStudioHdr, mstudioseqdesc_t &seqdesc, int iS
 
     float t = 0;
 
-    for (int i = 0; i < 4; ++i)
+    for (int i = 0; i < 4; i++)
     {
         if (weight[i] > 0 && panim[i]->numframes > 1)
         {
@@ -5285,7 +5308,7 @@ bool Studio_AnimPosition(mstudioanimdesc_t *panim, float flCycle, Vector &vecPos
 
     float flFrame = flCycle * (panim->numframes - 1);
 
-    for (int i = 0; i < panim->nummovements; ++i)
+    for (int i = 0; i < panim->nummovements; i++)
     {
         mstudiomovement_t *pmove = panim->pMovement(i);
 
@@ -5330,7 +5353,7 @@ bool Studio_AnimVelocity(mstudioanimdesc_t *panim, float flCycle, Vector &vecVel
     float flFrame = flCycle * (panim->numframes - 1);
     flFrame       = flFrame - (int) (flFrame / (panim->numframes - 1));
 
-    for (int i = 0; i < panim->nummovements; ++i)
+    for (int i = 0; i < panim->nummovements; i++)
     {
         mstudiomovement_t *pmove = panim->pMovement(i);
 
@@ -5390,7 +5413,7 @@ float Studio_FindAnimDistance(mstudioanimdesc_t *panim, float flDist)
     if (flDist <= 0)
         return 0.0;
 
-    for (int i = 0; i < panim->nummovements; ++i)
+    for (int i = 0; i < panim->nummovements; i++)
     {
         mstudiomovement_t *pmove = panim->pMovement(i);
 
@@ -5438,7 +5461,7 @@ bool Studio_SeqMovement(const CStudioHdr *pStudioHdr, int iSequence, float flCyc
 
     bool found = false;
 
-    for (int i = 0; i < 4; ++i)
+    for (int i = 0; i < 4; i++)
     {
         if (weight[i])
         {
@@ -5482,7 +5505,7 @@ bool Studio_SeqVelocity(const CStudioHdr *pStudioHdr, int iSequence, float flCyc
 
     bool found = false;
 
-    for (int i = 0; i < 4; ++i)
+    for (int i = 0; i < 4; i++)
     {
         if (weight[i])
         {
@@ -5512,7 +5535,7 @@ float Studio_FindSeqDistance(const CStudioHdr *pStudioHdr, int iSequence, const 
 
     float flCycle = 0;
 
-    for (int i = 0; i < 4; ++i)
+    for (int i = 0; i < 4; i++)
     {
         if (weight[i])
         {
@@ -5532,7 +5555,7 @@ int Studio_FindAttachment(const CStudioHdr *pStudioHdr, const char *pAttachmentN
     if (pStudioHdr && pStudioHdr->SequencesAvailable())
     {
         // Extract the bone index from the name
-        for (int i = 0; i < pStudioHdr->GetNumAttachments(); ++i)
+        for (int i = 0; i < pStudioHdr->GetNumAttachments(); i++)
         {
             if (!V_stricmp(pAttachmentName, ((CStudioHdr *) pStudioHdr)->pAttachment(i).pszName()))
             {
@@ -5556,7 +5579,7 @@ int Studio_FindRandomAttachment(const CStudioHdr *pStudioHdr, const char *pAttac
         CUtlVector<int> matchingAttachments;
 
         // Extract the bone index from the name
-        for (int i = 0; i < pStudioHdr->GetNumAttachments(); ++i)
+        for (int i = 0; i < pStudioHdr->GetNumAttachments(); i++)
         {
             if (strstr(((CStudioHdr *) pStudioHdr)->pAttachment(i).pszName(), pAttachmentName))
             {

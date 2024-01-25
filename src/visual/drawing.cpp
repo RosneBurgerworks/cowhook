@@ -2,21 +2,26 @@
  * drawing.cpp
  *
  *  Created on: Mar 10, 2019
- *      Authors: Lighty & nullifiedcat
+ *      Author: Lighty
  */
-
+/*
+ * drawing.cpp
+ *
+ *  Created on: Oct 5, 2016
+ *      Author: nullifiedcat
+ */
 #include "common.hpp"
 #if ENABLE_IMGUI_DRAWING
 #include "imgui/imrenderer.hpp"
 #elif ENABLE_GLEZ_DRAWING
 #include <glez/draw.hpp>
 #include <glez/glez.hpp>
-
 #elif ENABLE_ENGINE_DRAWING
 #include "picopng.hpp"
 #endif
 #include "menu/GuiInterface.hpp"
 #include <SDL2/SDL_video.h>
+#include <SDLHooks.hpp>
 #include "soundcache.hpp"
 
 // String -> Wstring
@@ -88,7 +93,7 @@ std::string ShrinkString(std::string data, int max_x, fonts::font &font)
     int dotdot_with = x;
 
     if (padding + dotdot_with > max_x)
-        return {};
+        return std::string();
 
     if (!data.empty())
     {
@@ -170,7 +175,7 @@ static InitRoutine font_size(
                 {
 #if ENABLE_GLEZ_DRAWING
                     fonts::esp->unload();
-                    fonts::esp.reset(new fonts::font(paths::getDataPath("/fonts/notosans.ttf"), after));
+                    fonts::esp.reset(new fonts::font(paths::getDataPath("/menu/Verdana.ttf"), after));
 #else
                     fonts::esp->changeSize(after);
 #endif
@@ -183,7 +188,7 @@ static InitRoutine font_size(
                 {
 #if ENABLE_GLEZ_DRAWING
                     fonts::center_screen->unload();
-                    fonts::center_screen.reset(new fonts::font(paths::getDataPath("/fonts/notosans.ttf"), after));
+                    fonts::center_screen.reset(new fonts::font(paths::getDataPath("/menu/Verdana.ttf"), after));
 #else
                     fonts::center_screen->changeSize(after);
 #endif
@@ -203,17 +208,17 @@ void Initialize()
     }
 #if ENABLE_GLEZ_DRAWING
     glez::preInit();
-    fonts::menu          = std::make_unique<fonts::font>(paths::getDataPath("/fonts/notosans.ttf"), 10);
-    fonts::esp           = std::make_unique<fonts::font>(paths::getDataPath("/fonts/notosans.ttf"), 10);
-    fonts::center_screen = std::make_unique<fonts::font>(paths::getDataPath("/fonts/notosans.ttf"), 12);
+    fonts::menu.reset(new fonts::font(paths::getDataPath("/menu/Verdana.ttf"), 10));
+    fonts::esp.reset(new fonts::font(paths::getDataPath("/menu/Verdana.ttf"), 10));
+    fonts::center_screen.reset(new fonts::font(paths::getDataPath("/menu/Verdana.ttf"), 12));
 #elif ENABLE_ENGINE_DRAWING
-    fonts::menu = std::make_unique<fonts::font>(paths::getDataPath("/fonts/notosans.ttf"), 10, true);
-    fonts::esp = std::make_unique<fonts::font>(paths::getDataPath("/fonts/notosans.ttf"), 10, true);
-    fonts::center_screen = std::make_unique<fonts::font>(paths::getDataPath("/fonts/notosans.ttf"), 12, true);
+    fonts::menu.reset(new fonts::font(paths::getDataPath("/menu/Verdana.ttf"), 10, true));
+    fonts::esp.reset(new fonts::font(paths::getDataPath("/menu/Verdana.ttf"), 10, true));
+    fonts::center_screen.reset(new fonts::font(paths::getDataPath("/menu/Verdana.ttf"), 12, true));
 #elif ENABLE_IMGUI_DRAWING
-    fonts::menu          = std::make_unique<fonts::font>(paths::getDataPath("/fonts/notosans.ttf"), 14, true);
-    fonts::esp           = std::make_unique<fonts::font>(paths::getDataPath("/fonts/notosans.ttf"), 15);
-    fonts::center_screen = std::make_unique<fonts::font>(paths::getDataPath("/fonts/notosans.ttf"), 15, true);
+    fonts::menu.reset(new fonts::font(paths::getDataPath("/menu/Verdana.ttf"), 13, true));
+    fonts::esp.reset(new fonts::font(paths::getDataPath("/menu/Verdana.ttf"), 13, true));
+    fonts::center_screen.reset(new fonts::font(paths::getDataPath("/menu/Verdana.ttf"), 14, true));
 #endif
 #if ENABLE_ENGINE_DRAWING
     texture_white                = g_ISurface->CreateNewTextureID();
@@ -269,7 +274,7 @@ void String(int x, int y, rgba_t rgba, const char *text, fonts::font &font)
 #endif
 }
 
-// x2_offset and y2_offset are an OFFSET, meaning you need to pass coordinate 2 - coordinate 1 for it to work, x2_offset is added to x1
+// x2_offset and y2_offset are an OFFSET, meaning you need to pass coordinate 2 - coordinate 1 for it to work, x2_offset is aded to x1
 void Line(float x1, float y1, float x2_offset, float y2_offset, rgba_t color, float thickness)
 {
 #if ENABLE_IMGUI_DRAWING
@@ -284,7 +289,7 @@ void Line(float x1, float y1, float x2_offset, float y2_offset, rgba_t color, fl
         x1 += 0.5f;
         y1 += 0.5f;
 
-        float length = FastSqrt(SQR(x2_offset) + SQR(y2_offset));
+        float length = sqrtf(x2_offset * x2_offset + y2_offset * y2_offset);
         x2_offset *= (length - 1.0f) / length;
         y2_offset *= (length - 1.0f) / length;
 
@@ -318,7 +323,9 @@ void Line(float x1, float y1, float x2_offset, float y2_offset, rgba_t color, fl
         g_ISurface->DrawTexturedPolygon(4, vertices);
     }
     else
+    {
         g_ISurface->DrawLine(x1, y1, x1 + x2_offset, y1 + y2_offset);
+    }
 #elif ENABLE_GLEZ_DRAWING
     glez::draw::line(x1, y1, x2_offset, y2_offset, color, thickness);
 #endif
@@ -494,6 +501,22 @@ bool WorldToScreen(const Vector &origin, Vector &screen)
     return false;
 }
 
+void StartupSound()
+{
+    // 100% based unique meowhook only feature do not steal
+    std::string cur_line;
+    std::vector<std::string> line_count;
+    std::ifstream sfile(paths::getDataPath("/startup_sounds.txt"));
+    int total_lines = 0;
+    while (getline(sfile, cur_line))
+    {
+        total_lines++;
+        line_count.push_back(cur_line);
+    }
+    int random_number = rand() % total_lines;
+    g_ISurface->PlaySound(line_count[random_number].c_str());
+}
+
 #if ENABLE_ENGINE_DRAWING
 bool Texture::load()
 {
@@ -584,6 +607,7 @@ void InitGL()
 
 #if ENABLE_GUI
     gui::init();
+    StartupSound();
 #endif
 }
 
@@ -599,13 +623,16 @@ void BeginGL()
 #if EXTERNAL_DRAWING
     xoverlay_draw_begin();
     {
+        PROF_SECTION(draw_begin__SDL_GL_MakeCurrent);
         // SDL_GL_MakeCurrent(sdl_hooks::window, context);
     }
 #endif
     {
         glActiveTexture(GL_TEXTURE0);
+        PROF_SECTION(draw_begin__glez_begin);
         glez::begin();
         glDisable(GL_FRAMEBUFFER_SRGB);
+        PROF_SECTION(DRAWEX_draw_begin);
     }
 #endif
 }
@@ -619,13 +646,16 @@ void EndGL()
     SDL_GL_MakeCurrent(sdl_hooks::window, nullptr);
 #endif
 #elif ENABLE_GLEZ_DRAWING
+    PROF_SECTION(DRAWEX_draw_end);
     {
+        PROF_SECTION(draw_end__glez_end);
         glEnable(GL_FRAMEBUFFER_SRGB);
         glez::end();
     }
 #if EXTERNAL_DRAWING
     xoverlay_draw_end();
     {
+        PROF_SECTION(draw_end__SDL_GL_MakeCurrent);
         SDL_GL_MakeCurrent(sdl_hooks::window, nullptr);
     }
 #endif

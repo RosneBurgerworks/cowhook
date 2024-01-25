@@ -1,8 +1,12 @@
+
 #include "HookedMethods.hpp"
 #include "WeaponData.hpp"
 
 namespace hooked_methods
 {
+int last_tick   = 0;
+int last_weapon = 0;
+
 // Credits to blackfire for telling me to do this :)
 DEFINE_HOOKED_METHOD(RunCommand, void, IPrediction *prediction, IClientEntity *entity, CUserCmd *usercmd, IMoveHelper *move)
 {
@@ -15,12 +19,12 @@ DEFINE_HOOKED_METHOD(RunCommand, void, IPrediction *prediction, IClientEntity *e
         return original::RunCommand(prediction, entity, usercmd, move);
 }
 
-static std::unordered_map<int, int> previous_ammo;
+static boost::unordered_flat_map<int, int> previous_ammo;
 
 // Also fix heavy M2 causing bucket to fill faster, same for pyro
 DEFINE_HOOKED_METHOD(CalcIsAttackCriticalHelper_brokenweps, bool, IClientEntity *ent)
 {
-    if (CE_GOOD(LOCAL_E) && CE_GOOD(LOCAL_W) && ent && re::C_TFWeaponBase::GetOwnerViaInterface(ent) == RAW_ENT(LOCAL_E) && !criticals::calling_crithelper)
+    if (CE_GOOD(LOCAL_E) && CE_GOOD(LOCAL_W) && ent && re::C_TFWeaponBase::GetOwnerViaInterface(ent) == LOCAL_E->InternalEntity() && !criticals::calling_crithelper)
     {
         auto current_ammo = CE_INT(LOCAL_E, netvar.m_iAmmo + 4);
         if (previous_ammo[ent->entindex()] == current_ammo)
@@ -61,7 +65,7 @@ static InitRoutine minigun_check(
                 if (!hWeapons)
                     return;
                 // Go through the handle array and search for the item
-                for (int i = 0; hWeapons[i]; ++i)
+                for (int i = 0; hWeapons[i]; i++)
                 {
                     if (IDX_BAD(HandleToIDX(hWeapons[i])))
                         continue;
@@ -70,11 +74,10 @@ static InitRoutine minigun_check(
                     if (CE_BAD(weapon))
                         continue;
                     // if weapon is what we are looking for, hook and move on
-                    auto weapon_internal_entity = RAW_ENT(weapon);
-                    if ((weapon->m_iClassID() == CL_CLASS(CTFMinigun) || weapon->m_iClassID() == CL_CLASS(CTFFlameThrower)) && !minigun_hook.IsHooked(weapon_internal_entity))
+                    if (CE_VALID(weapon) && (weapon->m_iClassID() == CL_CLASS(CTFMinigun) || weapon->m_iClassID() == CL_CLASS(CTFFlameThrower)) && !minigun_hook.IsHooked(weapon->InternalEntity()))
                     {
                         logging::Info("Found and hooked Minigun/Flamethrower!");
-                        minigun_hook.Set(weapon_internal_entity);
+                        minigun_hook.Set(weapon->InternalEntity());
                         minigun_hook.HookMethod(HOOK_ARGS(CalcIsAttackCriticalHelper_brokenweps));
                         minigun_hook.Apply();
                         break;
@@ -83,4 +86,5 @@ static InitRoutine minigun_check(
             },
             "cm_runcommand");
     });
+
 } // namespace hooked_methods

@@ -11,6 +11,7 @@
 
 namespace playerlist
 {
+
 constexpr int SERIALIZE_VERSION = 3;
 
 enum class k_EState
@@ -22,13 +23,11 @@ enum class k_EState
     IPC,
     TEXTMODE,
     CAT,
-    ABUSE,
     PARTY,
     STATE_LAST = PARTY
 };
-
 #if ENABLE_VISUALS
-extern std::array<rgba_t, 8> k_Colors;
+extern std::array<rgba_t, 7> k_Colors;
 static_assert(sizeof(rgba_t) == sizeof(float) * 4, "player list is going to be incompatible with no visual version");
 #endif
 extern const std::string k_Names[];
@@ -48,23 +47,25 @@ struct userdata
     unsigned kills{ 0 };
 };
 
-extern std::unordered_map<unsigned, userdata> data;
+extern boost::unordered_flat_map<unsigned, userdata> data;
 
 void Save();
 void Load();
 
 constexpr bool IsFriendly(k_EState state)
 {
-    return state != k_EState::RAGE && state != k_EState::DEFAULT && state != k_EState::CAT && state != k_EState::ABUSE;
+    return state != k_EState::RAGE && state != k_EState::DEFAULT && state != k_EState::CAT;
 }
-
 #if ENABLE_VISUALS
 rgba_t Color(unsigned steamid);
 rgba_t Color(CachedEntity *player);
 #endif
 userdata &AccessData(unsigned steamid);
+userdata &AccessData(CachedEntity *player);
 bool IsDefault(unsigned steamid);
+bool IsDefault(CachedEntity *player);
 bool IsFriend(unsigned steamid);
+bool IsFriend(CachedEntity *player);
 bool ChangeState(unsigned int steamid, k_EState state, bool force = false);
 bool ChangeState(CachedEntity *entity, k_EState state, bool force = false);
 } // namespace playerlist

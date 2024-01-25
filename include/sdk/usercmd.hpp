@@ -1,5 +1,5 @@
 /*
- * usercmd.hpp
+ * usercmd.h
  *
  *  Created on: Oct 5, 2016
  *      Author: nullifiedcat
@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include <cstdint>
+#include <stdint.h>
 
 #include <mathlib/vector.h>
 #include "checksum_crc.h"
@@ -41,24 +41,24 @@ public:
 
     CUserCmd &operator=(const CUserCmd &src)
     {
-        if (this != &src)
-        {
-            command_number = src.command_number;
-            tick_count     = src.tick_count;
-            viewangles     = src.viewangles;
-            forwardmove    = src.forwardmove;
-            sidemove       = src.sidemove;
-            upmove         = src.upmove;
-            buttons        = src.buttons;
-            impulse        = src.impulse;
-            weaponselect   = src.weaponselect;
-            weaponsubtype  = src.weaponsubtype;
-            random_seed    = src.random_seed;
-            mousedx        = src.mousedx;
-            mousedy        = src.mousedy;
+        if (this == &src)
+            return *this;
 
-            hasbeenpredicted = src.hasbeenpredicted;
-        }
+        command_number = src.command_number;
+        tick_count     = src.tick_count;
+        viewangles     = src.viewangles;
+        forwardmove    = src.forwardmove;
+        sidemove       = src.sidemove;
+        upmove         = src.upmove;
+        buttons        = src.buttons;
+        impulse        = src.impulse;
+        weaponselect   = src.weaponselect;
+        weaponsubtype  = src.weaponsubtype;
+        random_seed    = src.random_seed;
+        mousedx        = src.mousedx;
+        mousedy        = src.mousedy;
+
+        hasbeenpredicted = src.hasbeenpredicted;
 
         return *this;
     }
@@ -68,7 +68,7 @@ public:
         *this = src;
     }
 
-    CRC32_t GetChecksum() const
+    CRC32_t GetChecksum(void) const
     {
         CRC32_t crc;
 
@@ -92,7 +92,7 @@ public:
     }
 
     // Allow command, but negate gameplay-affecting values
-    void MakeInert()
+    void MakeInert(void)
     {
         viewangles.Init();
         forwardmove = 0.f;
@@ -102,38 +102,38 @@ public:
         impulse     = 0;
     }
 
-    char pad0[4]{};
+    char pad0[4];
     // For matching server and client commands for debugging
-    int command_number{};
+    int command_number;
 
     // the tick the client created this command
-    int tick_count{};
+    int tick_count;
 
     // Player instantaneous view angles.
     Vector viewangles;
     // Intended velocities
     //	forward velocity.
-    float forwardmove{};
+    float forwardmove;
     //  sideways velocity.
-    float sidemove{};
+    float sidemove;
     //  upward velocity.
-    float upmove{};
+    float upmove;
     // Attack button states
-    int buttons{};
+    int buttons;
     // Impulse command issued.
-    byte impulse{};
-    char pad1[3]{};
+    byte impulse;
+    char pad1[3];
     // Current weapon id
-    int weaponselect{};
-    int weaponsubtype{};
+    int weaponselect;
+    int weaponsubtype;
 
-    int random_seed{}; // For shared random functions
-    short mousedx{};   // mouse accum in x from create move
-    short mousedy{};   // mouse accum in y from create move
+    int random_seed; // For shared random functions
+    short mousedx;   // mouse accum in x from create move
+    short mousedy;   // mouse accum in y from create move
 
     // Client only, tracks whether we've predicted this command at least once
-    bool hasbeenpredicted{};
-    char pad2[3]{};
+    bool hasbeenpredicted;
+    char pad2[3];
 } __attribute__((packed));
 
 class CVerifiedUserCmd

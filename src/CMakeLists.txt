@@ -2,25 +2,30 @@ set(files "${CMAKE_CURRENT_LIST_DIR}/angles.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/CaptureLogic.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/chatlog.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/chatstack.cpp"
+        "${CMAKE_CURRENT_LIST_DIR}/conditions.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/crits.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/entitycache.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/entityhitboxcache.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/pathio.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/globals.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/hack.cpp"
+        "${CMAKE_CURRENT_LIST_DIR}/headshake.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/helpers.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/hitrate.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/hooks.cpp"
+        "${CMAKE_CURRENT_LIST_DIR}/hoovy.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/ipc.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/itemtypes.cpp"
+        "${CMAKE_CURRENT_LIST_DIR}/localplayer.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/playerlist.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/playerresource.cpp"
-        "${CMAKE_CURRENT_LIST_DIR}/targethelper.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/prediction.cpp"
+        "${CMAKE_CURRENT_LIST_DIR}/projlogging.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/sconvars.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/soundcache.cpp"
+        "${CMAKE_CURRENT_LIST_DIR}/targethelper.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/teamroundtimer.cpp"
-        "${CMAKE_CURRENT_LIST_DIR}/insecure.cpp"
+        "${CMAKE_CURRENT_LIST_DIR}/textmode.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/tfmm.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/trace.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/velocity.cpp"
@@ -28,7 +33,6 @@ set(files "${CMAKE_CURRENT_LIST_DIR}/angles.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/MiscTemporary.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/navparser.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/nospread.cpp"
-        "${CMAKE_CURRENT_LIST_DIR}/localplayer.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/PlayerTools.cpp"
         "${CMAKE_CURRENT_LIST_DIR}/SetupBonesReconst.cpp")
 
@@ -42,6 +46,6 @@ add_subdirectory(reclasses)
 add_subdirectory(sdk)
 add_subdirectory(settings)
 
-if (EnableVisuals)
+if(EnableVisuals)
     add_subdirectory(visual)
 endif()

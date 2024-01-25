@@ -7,17 +7,24 @@
 
 #include "common.hpp"
 #include <settings/Bool.hpp>
+#include "timer.hpp"
 
-static settings::Boolean enable{ "noisemaker-spam.enable", "false" };
-
-namespace hacks::noisemaker
+namespace hacks::tf2::noisemaker
 {
+static Timer noisemaker_timer{};
+
+// Merry Christmas
+#if ENABLE_TEXTMODE
+static settings::Boolean enable{ "noisemaker-spam.enable", "true" };
+#else
+static settings::Boolean enable{ "noisemaker-spam.enable", "false" };
+#endif
 
 static void CreateMove()
 {
-    if (enable && CE_GOOD(LOCAL_E) && LOCAL_E->m_bAlivePlayer())
+    if (enable && CE_GOOD(LOCAL_E))
     {
-        if (g_GlobalVars->framecount % 18 == 0)
+     if  (noisemaker_timer.check(1000))
         {
             KeyValues *kv = new KeyValues("+use_action_slot_item_server");
             g_IEngine->ServerCmdKeyValues(kv);
@@ -67,4 +74,4 @@ static InitRoutine EC([]() {
     EC::Register(EC::CreateMove, CreateMove, "Noisemaker", EC::average);
     EC::Register(EC::Shutdown, shutdown, "Noisemaker", EC::average);
 });
-} // namespace hacks::noisemaker
+} // namespace hacks::tf2::noisemaker

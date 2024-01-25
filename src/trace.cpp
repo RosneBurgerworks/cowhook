@@ -10,12 +10,15 @@
 // This file is a mess. I need to fix it. TODO
 
 /* Default Filter */
+
 trace::FilterDefault::FilterDefault()
 {
     m_pSelf = nullptr;
 }
 
-trace::FilterDefault::~FilterDefault() = default;
+trace::FilterDefault::~FilterDefault()
+{
+}
 
 void trace::FilterDefault::SetSelf(IClientEntity *self)
 {
@@ -45,10 +48,11 @@ bool trace::FilterDefault::ShouldHitEntity(IHandleEntity *handle, int mask)
         return false;
     // Sniper rifles can shoot through teammates!
     case CL_CLASS(CTFPlayer):
+    {
         if (m_pSelf)
         {
             // If what we hit is an enemy it does not matter
-            if (m_pSelf && entity->entindex() != 0 && IDX_GOOD(entity->entindex()) && CE_VALID(ENTITY(entity->entindex())) && ENTITY(entity->entindex())->m_iTeam() == ENTITY(m_pSelf->entindex())->m_iTeam())
+            if (m_pSelf && entity && entity->entindex() != 0 && IDX_GOOD(entity->entindex()) && CE_VALID(ENTITY(entity->entindex())) && ENTITY(entity->entindex())->m_iTeam() == ENTITY(m_pSelf->entindex())->m_iTeam())
             {
                 auto ent = ENTITY(m_pSelf->entindex());
                 if (CE_GOOD(ent) && ent->m_bAlivePlayer())
@@ -68,6 +72,7 @@ bool trace::FilterDefault::ShouldHitEntity(IHandleEntity *handle, int mask)
         }
         break;
     }
+    }
     /* Do not hit yourself. Idiot. */
     if (entity == m_pSelf)
         return false;
@@ -80,12 +85,13 @@ TraceType_t trace::FilterDefault::GetTraceType() const
 }
 
 /* No-Player filter */
+
 trace::FilterNoPlayer::FilterNoPlayer()
 {
     m_pSelf = nullptr;
 }
 
-trace::FilterNoPlayer::~FilterNoPlayer() = default;
+trace::FilterNoPlayer::~FilterNoPlayer(){};
 
 void trace::FilterNoPlayer::SetSelf(IClientEntity *self)
 {
@@ -130,9 +136,10 @@ TraceType_t trace::FilterNoPlayer::GetTraceType() const
 }
 
 /* Navigation filter */
-trace::FilterNavigation::FilterNavigation() = default;
 
-trace::FilterNavigation::~FilterNavigation() = default;
+trace::FilterNavigation::FilterNavigation(){};
+
+trace::FilterNavigation::~FilterNavigation(){};
 
 #define MOVEMENT_COLLISION_GROUP 8
 #define RED_CONTENTS_MASK 0x800
@@ -169,12 +176,13 @@ TraceType_t trace::FilterNavigation::GetTraceType() const
 }
 
 /* No-Entity filter */
+
 trace::FilterNoEntity::FilterNoEntity()
 {
     m_pSelf = nullptr;
 }
 
-trace::FilterNoEntity::~FilterNoEntity() = default;
+trace::FilterNoEntity::~FilterNoEntity(){};
 
 void trace::FilterNoEntity::SetSelf(IClientEntity *self)
 {
@@ -213,19 +221,21 @@ TraceType_t trace::FilterNoEntity::GetTraceType() const
 {
     return TRACE_EVERYTHING;
 }
-
 /* Penetration Filter */
+
 trace::FilterPenetration::FilterPenetration()
 {
     m_pSelf = nullptr;
 }
 
-trace::FilterPenetration::~FilterPenetration() = default;
+trace::FilterPenetration::~FilterPenetration(){};
 
 void trace::FilterPenetration::SetSelf(IClientEntity *self)
 {
     if (self == nullptr)
+    {
         logging::Info("nullptr in FilterPenetration::SetSelf");
+    }
     m_pSelf = self;
 }
 
@@ -267,7 +277,42 @@ TraceType_t trace::FilterPenetration::GetTraceType() const
 
 void trace::FilterPenetration::Reset()
 {
-    m_pIgnoreFirst = nullptr;
+    m_pIgnoreFirst = 0;
+}
+/* Teammate filter */
+trace::FilterNoTeammates::FilterNoTeammates()
+{
+    m_pSelf = nullptr;
+}
+
+trace::FilterNoTeammates::~FilterNoTeammates(){};
+
+void trace::FilterNoTeammates::SetSelf(IClientEntity *self)
+{
+    if (self == nullptr)
+    {
+        logging::Info("nullptr in FilterNoPlayer::SetSelf");
+        return;
+    }
+    m_pSelf = self;
+}
+
+bool trace::FilterNoTeammates::ShouldHitEntity(IHandleEntity *handle, int mask)
+{
+    IClientEntity *entity;
+    ClientClass *clazz;
+
+    if (!handle)
+        return false;
+    entity = (IClientEntity *) handle;
+    if (ENTITY(entity->entindex())->m_iTeam() == ENTITY(m_pSelf->entindex())->m_iTeam())
+        return false;
+    return true;
+}
+
+TraceType_t trace::FilterNoTeammates::GetTraceType() const
+{
+    return TRACE_EVERYTHING;
 }
 
 trace::FilterDefault trace::filter_default{};
@@ -275,3 +320,4 @@ trace::FilterNoPlayer trace::filter_no_player{};
 trace::FilterNavigation trace::filter_navigation{};
 trace::FilterNoEntity trace::filter_no_entity{};
 trace::FilterPenetration trace::filter_penetration{};
+trace::FilterNoTeammates trace::filter_teammates{};

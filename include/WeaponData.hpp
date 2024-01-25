@@ -37,7 +37,9 @@ public:
     bool unknown7{};
     int weapon_mode{};
     int weapon_data{};
-    weapon_info() = default;
+    weapon_info()
+    {
+    }
     void Load(IClientEntity *weapon)
     {
         crit_bucket          = *(float *) ((uintptr_t) weapon + 0xa3c);
@@ -54,13 +56,11 @@ public:
         weapon_mode = *(int *) ((uintptr_t) weapon + 0xb08);
         weapon_data = *(int *) ((uintptr_t) weapon + 0xb14);
     }
-
-    explicit weapon_info(IClientEntity *weapon)
+    weapon_info(IClientEntity *weapon)
     {
         Load(weapon);
     }
-
-    void restore_data(IClientEntity *weapon) const
+    void restore_data(IClientEntity *weapon)
     {
         *(float *) ((uintptr_t) weapon + 0xa3c)        = crit_bucket;
         *(unsigned int *) ((uintptr_t) weapon + 0xb40) = weapon_seed;
@@ -73,12 +73,10 @@ public:
         *(float *) ((uintptr_t) weapon + 0xc00)        = observed_crit_chance;
         *(bool *) ((uintptr_t) weapon + 0xb1c)         = unknown7;
     }
-
     bool operator==(const weapon_info &B) const
     {
         return crit_bucket == B.crit_bucket && weapon_seed == B.weapon_seed && unknown1 == B.unknown1 && unknown2 == B.unknown2 && unknown3 == B.unknown3 && m_flCritTime == B.m_flCritTime && crit_attempts == B.crit_attempts && crit_count == B.crit_count && observed_crit_chance == B.observed_crit_chance && unknown7 == B.unknown7;
     }
-
     bool operator!=(const weapon_info &B) const
     {
         return !(*this == B);

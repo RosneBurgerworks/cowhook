@@ -6,39 +6,37 @@
 #include "hacks/AntiAntiAim.hpp"
 #include "sdk/dt_recv_redef.h"
 
-namespace hacks::anti_anti_aim
+namespace hacks::shared::anti_anti_aim
 {
 static settings::Boolean enable{ "anti-anti-aim.enable", "false" };
-static settings::Boolean resolve_yaw{ "anti-anti-aim.yaw", "false" };
+static settings::Boolean debug{ "anti-anti-aim.debug.enable", "false" };
 
-std::unordered_map<unsigned, brutedata> resolver_map;
+boost::unordered_flat_map<unsigned, brutedata> resolver_map;
 std::array<CachedEntity *, 32> sniperdot_array;
 
 static inline void modifyAngles()
 {
-    for (int i = 1; i <= g_IEngine->GetMaxClients(); i++)
+    for (auto const &player : entity_cache::player_cache)
     {
-        auto player = ENTITY(i);
+
         if (CE_BAD(player) || !player->m_bAlivePlayer() || !player->m_bEnemy() || !player->player_info->friendsID)
             continue;
         auto &data  = resolver_map[player->player_info->friendsID];
         auto &angle = CE_VECTOR(player, netvar.m_angEyeAngles);
         angle.x     = data.new_angle.x;
-        if (resolve_yaw)
-            angle.y = data.new_angle.y;
+        angle.y     = data.new_angle.y;
     }
 }
-
 static inline void CreateMove()
 {
     // Empty the array
     sniperdot_array.fill(0);
     // Find sniper dots
-    for (int i = g_IEngine->GetMaxClients() + 1; i <= HIGHEST_ENTITY; i++)
+    for (auto &dot_ent : entity_cache::valid_ents)
     {
-        CachedEntity *dot_ent = ENTITY(i);
+
         // Not a sniper dot
-        if (CE_BAD(dot_ent) || dot_ent->m_iClassID() != CL_CLASS(CSniperDot))
+        if (dot_ent->m_iClassID() != CL_CLASS(CSniperDot))
             continue;
         // Get the player it belongs to
         auto ent_idx = HandleToIDX(CE_INT(dot_ent, netvar.m_hOwnerEntity));
@@ -62,22 +60,28 @@ void frameStageNotify(ClientFrameStage_t stage)
 #endif
 }
 
+static std::array<float, 5> yaw_resolves{ 0.0f, 180.0f, 65.0f, -65.0f, -180.0f };
+
 static float resolveAngleYaw(float angle, brutedata &brute)
 {
-    if (!resolve_yaw)
-        return angle;
-
-
-
-    angle -= 0.087929;
-    if (angle >= 0 && angle <= 180)
-        angle += 359;
-
-    angle -= (int)(angle / 360) * 360;
-    if (angle < -180)
-        angle += 360;
-    else if (angle > 180)
+    brute.original_angle.y = angle;
+    while (angle > 180)
         angle -= 360;
+
+    while (angle < -180)
+        angle += 360;
+
+    // Yaw Resolving
+    // Find out which angle we should try
+    int entry = (int) std::floor((brute.brutenum / 2.0f)) % yaw_resolves.size();
+    angle += yaw_resolves[entry];
+
+    while (angle > 180)
+        angle -= 360;
+
+    while (angle < -180)
+        angle += 360;
+    brute.new_angle.y = angle;
     return angle;
 }
 
@@ -140,7 +144,7 @@ void increaseBruteNum(int idx)
     auto ent = ENTITY(idx);
     if (CE_BAD(ent) || !ent->player_info->friendsID)
         return;
-    auto &data = hacks::anti_anti_aim::resolver_map[ent->player_info->friendsID];
+    auto &data = hacks::shared::anti_anti_aim::resolver_map[ent->player_info->friendsID];
     if (data.hits_in_a_row >= 4)
         data.hits_in_a_row = 2;
     else if (data.hits_in_a_row >= 2)
@@ -148,6 +152,8 @@ void increaseBruteNum(int idx)
     else
     {
         data.brutenum++;
+        if (debug)
+            logging::Info("AAA: Brutenum for entity %i increased to %i", idx, data.brutenum);
         data.hits_in_a_row = 0;
         auto &angle        = CE_VECTOR(ent, netvar.m_angEyeAngles);
         angle.x            = resolveAnglePitch(data.original_angle.x, data, ent);
@@ -179,7 +185,7 @@ static void yawHook(const CRecvProxyData *pData, void *pStruct, void *pOut)
     float flYaw      = pData->m_Value.m_Float;
     float *flYaw_out = (float *) pOut;
 
-    if (!enable || !resolve_yaw)
+    if (!enable)
     {
         *flYaw_out = flYaw;
         return;
@@ -206,7 +212,7 @@ static void hook()
         // "DT_TFPlayer", "tfnonlocaldata"
         if (!strcmp(pszName, "DT_TFPlayer"))
         {
-            for (int i = 0; i < pClass->m_pRecvTable->m_nProps; i++)
+            for (int i = 0; i < pClass->m_pRecvTable->m_nProps; ++i)
             {
                 RecvPropRedef *pProp1 = (RecvPropRedef *) &(pClass->m_pRecvTable->m_pProps[i]);
                 if (!pProp1)
@@ -249,14 +255,16 @@ static void shutdown()
     *original_ptrY = original_ProxyFnY;
 }
 
-static InitRoutine init([]() {
-    hook();
-    EC::Register(EC::Shutdown, shutdown, "antiantiaim_shutdown");
-    EC::Register(EC::CreateMove, CreateMove, "cm_antiantiaim");
-    EC::Register(EC::CreateMoveWarp, CreateMove, "cmw_antiantiaim");
-    #if ENABLE_TEXTMODE
-    EC::Register(EC::CreateMove, modifyAngles, "cm_textmodeantiantiaim");
-    EC::Register(EC::CreateMoveWarp, modifyAngles, "cmw_textmodeantiantiaim");
+static InitRoutine init(
+    []()
+    {
+        hook();
+        EC::Register(EC::Shutdown, shutdown, "antiantiaim_shutdown");
+        EC::Register(EC::CreateMove, CreateMove, "cm_antiantiaim");
+        EC::Register(EC::CreateMoveWarp, CreateMove, "cmw_antiantiaim");
+#if ENABLE_TEXTMODE
+        EC::Register(EC::CreateMove, modifyAngles, "cm_textmodeantiantiaim");
+        EC::Register(EC::CreateMoveWarp, modifyAngles, "cmw_textmodeantiantiaim");
 #endif
-});
-} // namespace hacks::anti_anti_aim
+    });
+} // namespace hacks::shared::anti_anti_aim

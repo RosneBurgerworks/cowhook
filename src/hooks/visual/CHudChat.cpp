@@ -43,7 +43,7 @@ DEFINE_HOOKED_METHOD(ChatPrintf, void, CHudBaseChat *_this, int player_idx, int 
 
     if (anti_spam)
     {
-        if (player_idx > 0 && player_idx <= g_GlobalVars->maxClients)
+        if (player_idx > 0 && player_idx <= g_IEngine->GetMaxClients())
         {
             // Spam Entries for player
             auto &spam_vec = spam_storage.at(player_idx - 1);
@@ -89,18 +89,23 @@ DEFINE_HOOKED_METHOD(ChatPrintf, void, CHudBaseChat *_this, int player_idx, int 
             }
         }
     }
+    if (*clean_chat && isHackActive())
+    {
+        std::string result = buf.get();
+
+        ReplaceString(result, "\n", "");
+        ReplaceString(result, "\r", "");
+        return original::ChatPrintf(_this, player_idx, iFilter, "%s", result.c_str());
+    }
     return original::ChatPrintf(_this, player_idx, iFilter, "%s", buf.get());
 }
-static InitRoutine initlevlinit(
-    []()
-    {
-        EC::Register(
-            EC::LevelInit,
-            []()
-            {
-                for (auto &i : spam_storage)
-                    i.clear();
-            },
-            "clear_antispam");
-    });
+static InitRoutine initlevlinit([]() {
+    EC::Register(
+        EC::LevelInit,
+        []() {
+            for (auto &i : spam_storage)
+                i.clear();
+        },
+        "clear_antispam");
+});
 } // namespace hooked_methods

@@ -9,6 +9,7 @@
 #include "common.hpp"
 namespace re
 {
+
 class CEconItem
 {
 public:

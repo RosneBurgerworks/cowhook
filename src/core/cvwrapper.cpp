@@ -7,7 +7,7 @@
 
 #include <core/cvwrapper.hpp>
 #include <helpers.hpp>
-#include <utility>
+#include <common.hpp>
 
 std::vector<CatCommand *> &commandRegistrationArray()
 {
@@ -15,12 +15,12 @@ std::vector<CatCommand *> &commandRegistrationArray()
     return vector;
 }
 
-CatCommand::CatCommand(std::string _name, std::string _help, FnCommandCallback_t _callback) : name(std::move(_name)), help(std::move(_help)), callback(_callback)
+CatCommand::CatCommand(std::string _name, std::string _help, FnCommandCallback_t _callback) : name(_name), help(_help), callback(_callback)
 {
     commandRegistrationArray().push_back(this);
 }
 
-CatCommand::CatCommand(std::string _name, std::string _help, FnCommandCallbackVoid_t _callback) : name(std::move(_name)), help(std::move(_help)), callback_void(_callback)
+CatCommand::CatCommand(std::string _name, std::string _help, FnCommandCallbackVoid_t _callback) : name(_name), help(_help), callback_void(_callback)
 {
     commandRegistrationArray().push_back(this);
 }
@@ -30,10 +30,13 @@ void CatCommand::Register()
     char *name_c = new char[256];
     char *help_c = new char[256];
     if (name.at(0) == '+' || name.at(0) == '-' || name == "cat")
+    {
         strncpy(name_c, (name).c_str(), 255);
+    }
     else
+    {
         strncpy(name_c, (CON_PREFIX + name).c_str(), 255);
-
+    }
     strncpy(help_c, help.c_str(), 255);
     if (callback)
         cmd = new ConCommand(name_c, callback, help_c);

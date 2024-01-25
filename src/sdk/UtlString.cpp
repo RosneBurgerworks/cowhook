@@ -1,3 +1,9 @@
+//========= Copyright Valve Corporation, All rights reserved. ============//
+//
+// Purpose:
+//
+//=============================================================================
+
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
 
@@ -311,7 +317,7 @@ bool CUtlString::MatchesPattern(const CUtlString &Pattern, int nFlags) const
             const char *pszStartPattern = pszPattern - nLength;
             const char *pszSearch       = pszSource;
 
-            for (int i = 0; i < nLength; ++i, pszSearch++, pszStartPattern++)
+            for (int i = 0; i < nLength; i++, pszSearch++, pszStartPattern++)
             {
                 if ((*pszSearch) == 0)
                 {
@@ -434,11 +440,11 @@ void CUtlString::TrimLeft(const char *szTargets)
         return;
     }
 
-    for (i = 0; m_pString[i] != 0; ++i)
+    for (i = 0; m_pString[i] != 0; i++)
     {
         bool bWhitespace = false;
 
-        for (int j = 0; szTargets[j] != 0; ++j)
+        for (int j = 0; szTargets[j] != 0; j++)
         {
             if (m_pString[i] == szTargets[j])
             {
@@ -488,7 +494,7 @@ void CUtlString::TrimRight(const char *szTargets)
     {
         bool bWhitespace = false;
 
-        for (int j = 0; szTargets[j] != 0; ++j)
+        for (int j = 0; szTargets[j] != 0; j++)
         {
             if (m_pString[i] == szTargets[j])
             {
@@ -573,7 +579,7 @@ CUtlString CUtlString::Replace(char cFrom, char cTo) const
 
     CUtlString ret = *this;
     int len        = ret.Length();
-    for (int i = 0; i < len; ++i)
+    for (int i = 0; i < len; i++)
     {
         if (ret.m_pString[i] == cFrom)
             ret.m_pString[i] = cTo;

@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include <cstdio>
+#include <stdio.h>
 #include <fstream>
 
 namespace logging

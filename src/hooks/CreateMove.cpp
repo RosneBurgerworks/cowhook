@@ -8,18 +8,27 @@
 #include "common.hpp"
 #include "hack.hpp"
 #include "MiscTemporary.hpp"
+#include <link.h>
 #include <hacks/hacklist.hpp>
 #include <settings/Bool.hpp>
 #include <hacks/AntiAntiAim.hpp>
+#include "NavBot.hpp"
 #include "HookTools.hpp"
-#include "Misc.hpp"
+#include "teamroundtimer.hpp"
+
+// Found in C_BasePlayer. It represents "m_pCurrentCommand"
+#define CURR_CUSERCMD_PTR 4452
 #include "HookedMethods.hpp"
 #include "nospread.hpp"
 #include "Warp.hpp"
 
+static settings::Boolean minigun_jump{ "misc.minigun-jump-tf2c", "false" };
 static settings::Boolean roll_speedhack{ "misc.roll-speedhack", "false" };
 static settings::Boolean forward_speedhack{ "misc.roll-speedhack.forward", "false" };
 settings::Boolean engine_pred{ "misc.engine-prediction", "true" };
+static settings::Boolean debug_projectiles{ "debug.projectiles", "false" };
+static settings::Int fullauto{ "misc.full-auto", "0" };
+static settings::Boolean fuckmode{ "misc.fuckmode", "false" };
 
 class CMoveData;
 namespace engine_prediction
@@ -34,13 +43,13 @@ void RunEnginePrediction(IClientEntity *ent, CUserCmd *ucmd)
     typedef void (*SetupMoveFn)(IPrediction *, IClientEntity *, CUserCmd *, class IMoveHelper *, CMoveData *);
     typedef void (*FinishMoveFn)(IPrediction *, IClientEntity *, CUserCmd *, CMoveData *);
 
-    void **predictionVtable = *(void ***) g_IPrediction;
-
-    auto oSetupMove  = (SetupMoveFn) (*(unsigned *) (predictionVtable + 19));
-    auto oFinishMove = (FinishMoveFn) (*(unsigned *) (predictionVtable + 20));
-    // CMoveData *pMoveData = (CMoveData*)(sharedobj::client->lmap->l_addr + 0x1F69C0C);  CMoveData movedata {};
-    auto object     = std::make_unique<char[]>(165);
-    auto *pMoveData = (CMoveData *) object.get();
+    void **predictionVtable  = *((void ***) g_IPrediction);
+    SetupMoveFn oSetupMove   = (SetupMoveFn) (*(unsigned *) (predictionVtable + 19));
+    FinishMoveFn oFinishMove = (FinishMoveFn) (*(unsigned *) (predictionVtable + 20));
+    // CMoveData *pMoveData = (CMoveData*)(sharedobj::client->lmap->l_addr +
+    // 0x1F69C0C);  CMoveData movedata {};
+    auto object          = std::make_unique<char[]>(165);
+    CMoveData *pMoveData = (CMoveData *) object.get();
 
     // Backup
     float frameTime = g_GlobalVars->frametime;
@@ -50,7 +59,9 @@ void RunEnginePrediction(IClientEntity *ent, CUserCmd *ucmd)
 
     CUserCmd defaultCmd{};
     if (ucmd == nullptr)
+    {
         ucmd = &defaultCmd;
+    }
 
     // Set Usercmd for prediction
     NET_VAR(ent, CURR_CUSERCMD_PTR, CUserCmd *) = ucmd;
@@ -58,11 +69,12 @@ void RunEnginePrediction(IClientEntity *ent, CUserCmd *ucmd)
     // Set correct CURTIME
     g_GlobalVars->curtime   = g_GlobalVars->interval_per_tick * NET_INT(ent, netvar.nTickBase);
     g_GlobalVars->frametime = g_GlobalVars->interval_per_tick;
+
     *g_PredictionRandomSeed = MD5_PseudoRandom(current_user_cmd->command_number) & 0x7FFFFFFF;
 
     // Run The Prediction
     g_IGameMovement->StartTrackPredictionErrors(reinterpret_cast<CBasePlayer *>(ent));
-    oSetupMove(g_IPrediction, ent, ucmd, nullptr, pMoveData);
+    oSetupMove(g_IPrediction, ent, ucmd, NULL, pMoveData);
     g_IGameMovement->ProcessMovement(reinterpret_cast<CBasePlayer *>(ent), pMoveData);
     oFinishMove(g_IPrediction, ent, ucmd, pMoveData);
     g_IGameMovement->FinishTrackPredictionErrors(reinterpret_cast<CBasePlayer *>(ent));
@@ -76,6 +88,8 @@ void RunEnginePrediction(IClientEntity *ent, CUserCmd *ucmd)
 
     // Adjust tickbase
     NET_INT(ent, netvar.nTickBase)++;
+
+    return;
 }
 // Restore Origin
 void FinishEnginePrediction(IClientEntity *ent, CUserCmd *ucmd)
@@ -87,9 +101,9 @@ void FinishEnginePrediction(IClientEntity *ent, CUserCmd *ucmd)
 
 void PrecalculateCanShoot()
 {
-    auto weapon = LOCAL_W;
+    auto weapon = g_pLocalPlayer->weapon();
     // Check if player and weapon are good
-    if (CE_BAD(LOCAL_E) || CE_BAD(weapon))
+    if (CE_BAD(g_pLocalPlayer->entity) || CE_BAD(weapon))
     {
         calculated_can_shoot = false;
         return;
@@ -101,7 +115,7 @@ void PrecalculateCanShoot()
     static float last_attack = 0.0f;
     // Last weapon used
     static CachedEntity *last_weapon = nullptr;
-    float server_time                = (float) (CE_INT(LOCAL_E, netvar.nTickBase)) * g_GlobalVars->interval_per_tick;
+    float server_time                = (float) (CE_INT(g_pLocalPlayer->entity, netvar.nTickBase)) * g_GlobalVars->interval_per_tick;
     float new_next_attack            = CE_FLOAT(weapon, netvar.flNextPrimaryAttack);
     float new_last_attack            = CE_FLOAT(weapon, netvar.flLastFireTime);
 
@@ -112,16 +126,18 @@ void PrecalculateCanShoot()
         last_attack = new_last_attack;
         last_weapon = weapon;
     }
-    // Check if we can shoot
+    // Check if can shoot
     calculated_can_shoot = next_attack <= server_time;
 }
 
+static int attackticks = 0;
 namespace hooked_methods
 {
-void speedHack(CUserCmd *cmd)
+void speedHack(CUserCmd *cmd, bool &ret)
 {
-    float speed;
-    if (cmd->buttons & IN_DUCK && (g_pLocalPlayer->flags & FL_ONGROUND) && !(cmd->buttons & IN_ATTACK) && !HasCondition<TFCond_Charging>(LOCAL_E))
+    float speed, yaw;
+    Vector vsilent, ang;
+    if (cmd->buttons & IN_DUCK && (CE_INT(g_pLocalPlayer->entity, netvar.iFlags) & FL_ONGROUND) && !(cmd->buttons & IN_ATTACK) && !HasCondition<TFCond_Charging>(LOCAL_E))
     {
         speed                     = Vector{ cmd->forwardmove, cmd->sidemove, 0.0f }.Length();
         static float prevspeedang = 0.0f;
@@ -156,7 +172,6 @@ void speedHack(CUserCmd *cmd)
         }
     }
 }
-
 DEFINE_HOOKED_METHOD(CreateMove, bool, void *this_, float input_sample_time, CUserCmd *cmd)
 {
     g_Settings.is_create_move = true;
@@ -173,8 +188,17 @@ DEFINE_HOOKED_METHOD(CreateMove, bool, void *this_, float input_sample_time, CUs
         return ret;
     }
 
+#if ENABLE_VISUALS
+    // Fix nolerp camera jitter
+    if (nolerp)
+    {
+        QAngle viewangles = { cmd->viewangles.x, cmd->viewangles.y, cmd->viewangles.z };
+        g_IEngine->SetViewAngles(viewangles);
+    }
+#endif
+
     // Disabled because this causes EXTREME aimbot inaccuracy
-    // Actually don't disable it. It causes even more inaccuracy
+    // Actually dont disable it. It causes even more inaccuracy
     if (!cmd->command_number)
     {
         g_Settings.is_create_move = false;
@@ -189,53 +213,77 @@ DEFINE_HOOKED_METHOD(CreateMove, bool, void *this_, float input_sample_time, CUs
         return ret;
     }
 
-    if (!g_IEngine->IsInGame() || g_IEngine->IsLevelMainMenuBackground())
+    if (!g_IEngine->IsInGame())
     {
         g_Settings.bInvalid       = true;
         g_Settings.is_create_move = false;
         return true;
     }
 
+    PROF_SECTION(CreateMove);
+#if ENABLE_VISUALS
+    stored_buttons = current_user_cmd->buttons;
+    if (freecam_is_toggled)
+    {
+        current_user_cmd->sidemove    = 0.0f;
+        current_user_cmd->forwardmove = 0.0f;
+    }
+#endif
     if (current_user_cmd && current_user_cmd->command_number)
         last_cmd_number = current_user_cmd->command_number;
 
+    /**bSendPackets = true;
+    if (hacks::shared::lagexploit::ExploitActive()) {
+        *bSendPackets = ((current_user_cmd->command_number % 4) == 0);
+        //logging::Info("%d", *bSendPackets);
+    }*/
+
+    // logging::Info("canpacket: %i", ch->CanPacket());
+    // if (!cmd) return ret;
+
     time_replaced = false;
     curtime_old   = g_GlobalVars->curtime;
-
-    if (CE_GOOD(LOCAL_E))
+    
+    if (!g_Settings.bInvalid && CE_GOOD(g_pLocalPlayer->entity))
     {
-        servertime            = (float) CE_INT(LOCAL_E, netvar.nTickBase) * g_GlobalVars->interval_per_tick;
+        servertime            = (float) CE_INT(g_pLocalPlayer->entity, netvar.nTickBase) * g_GlobalVars->interval_per_tick;
         g_GlobalVars->curtime = servertime;
         time_replaced         = true;
     }
     if (g_Settings.bInvalid)
         entity_cache::Invalidate();
-
     //	PROF_BEGIN();
     // Do not update if in warp, since the entities will stay identical either way
-    if (!hacks::warp::in_warp)
+    if (!hacks::tf2::warp::in_warp)
     {
+        PROF_SECTION(EntityCache);
         entity_cache::Update();
     }
     //	PROF_END("Entity Cache updating");
     {
+        PROF_SECTION(CM_PlayerResource);
         g_pPlayerResource->Update();
     }
     {
+        PROF_SECTION(CM_LocalPlayer);
         g_pLocalPlayer->Update();
     }
     PrecalculateCanShoot();
     if (firstcm)
     {
         DelayTimer.update();
+        if (identify)
+        {
+            sendIdentifyMessage(false);
+        }
         EC::run(EC::FirstCM);
         firstcm = false;
     }
     g_Settings.bInvalid = false;
 
-    if (CE_GOOD(LOCAL_E))
+    if (CE_GOOD(g_pLocalPlayer->entity))
     {
-        if (!g_pLocalPlayer->life_state && CE_GOOD(LOCAL_W))
+        if (!g_pLocalPlayer->life_state && CE_GOOD(g_pLocalPlayer->weapon()))
         {
             // Walkbot can leave game.
             if (!g_IEngine->IsInGame())
@@ -243,15 +291,22 @@ DEFINE_HOOKED_METHOD(CreateMove, bool, void *this_, float input_sample_time, CUs
                 g_Settings.is_create_move = false;
                 return ret;
             }
+            if (current_user_cmd->buttons & IN_ATTACK)
+                ++attackticks;
+            else
+                attackticks = 0;
+            if (fullauto)
+                if (current_user_cmd->buttons & IN_ATTACK)
+                    if (attackticks % *fullauto + 1 < *fullauto)
+                        current_user_cmd->buttons &= ~IN_ATTACK;
             g_pLocalPlayer->isFakeAngleCM = false;
             static int fakelag_queue      = 0;
-
             if (CE_GOOD(LOCAL_E))
-                if (!hacks::nospread::is_syncing && (fakelag_amount || (hacks::antiaim::force_fakelag && hacks::antiaim::isEnabled())))
+                if (!hacks::tf2::nospread::is_syncing && (fakelag_amount || (hacks::shared::antiaim::force_fakelag && hacks::shared::antiaim::isEnabled())))
                 {
                     // Do not fakelag when trying to attack
                     bool do_fakelag = true;
-                    switch (GetWeaponMode())
+                    switch (g_pLocalPlayer->weapon_mode)
                     {
                     case weapon_melee:
                     {
@@ -269,7 +324,7 @@ DEFINE_HOOKED_METHOD(CreateMove, bool, void *this_, float input_sample_time, CUs
                         break;
                     }
 
-                    if (fakelag_midair && g_pLocalPlayer->flags & FL_ONGROUND)
+                    if (fakelag_midair && CE_INT(LOCAL_E, netvar.iFlags) & FL_ONGROUND)
                         do_fakelag = false;
 
                     if (do_fakelag)
@@ -284,23 +339,26 @@ DEFINE_HOOKED_METHOD(CreateMove, bool, void *this_, float input_sample_time, CUs
                     }
                 }
             {
-                hacks::antiaim::ProcessUserCmd(cmd);
+                PROF_SECTION(CM_antiaim);
+                hacks::shared::antiaim::ProcessUserCmd(cmd);
             }
+            if (debug_projectiles)
+                projectile_logging::Update();
         }
     }
     else
         return false;
-
     {
+        PROF_SECTION(CM_WRAPPER);
         EC::run(EC::CreateMove_NoEnginePred);
 
-        if (engine_pred && GetWeaponMode() == weapon_projectile)
+        if (engine_pred && g_pLocalPlayer->weapon_mode == weapon_projectile)
         {
             engine_prediction::RunEnginePrediction(RAW_ENT(LOCAL_E), current_user_cmd);
             g_pLocalPlayer->UpdateEye();
         }
 
-        if (hacks::warp::in_warp)
+        if (hacks::tf2::warp::in_warp)
             EC::run(EC::CreateMoveWarp);
         else
             EC::run(EC::CreateMove);
@@ -309,6 +367,7 @@ DEFINE_HOOKED_METHOD(CreateMove, bool, void *this_, float input_sample_time, CUs
         g_GlobalVars->curtime = curtime_old;
     g_Settings.bInvalid = false;
     {
+        PROF_SECTION(CM_chat_stack);
         chat_stack::OnCreateMove();
     }
 
@@ -316,16 +375,19 @@ DEFINE_HOOKED_METHOD(CreateMove, bool, void *this_, float input_sample_time, CUs
 
 #if ENABLE_IPC
     {
+        PROF_SECTION(CM_playerlist);
         static Timer ipc_update_timer{};
-        // playerlist::DoNotKillMe();
-        if (ipc_update_timer.test_and_set(10000))
+        //	playerlist::DoNotKillMe();
+        if (ipc_update_timer.test_and_set(1000 * 10))
+        {
             ipc::UpdatePlayerlist();
+        }
     }
 #endif
-    if (CE_GOOD(LOCAL_E))
+    if (CE_GOOD(g_pLocalPlayer->entity))
     {
         if (roll_speedhack)
-            speedHack(cmd);
+            speedHack(cmd, ret);
         else
         {
             if (g_pLocalPlayer->bUseSilentAngles)
@@ -336,7 +398,7 @@ DEFINE_HOOKED_METHOD(CreateMove, bool, void *this_, float input_sample_time, CUs
                 vsilent.x = cmd->forwardmove;
                 vsilent.y = cmd->sidemove;
                 vsilent.z = cmd->upmove;
-                speed     = std::hypot(vsilent.x, vsilent.y);
+                speed     = sqrt(vsilent.x * vsilent.x + vsilent.y * vsilent.y);
                 VectorAngles(vsilent, ang);
                 yaw                 = DEG2RAD(ang.y - g_pLocalPlayer->v_OrigViewangles.y + cmd->viewangles.y);
                 cmd->forwardmove    = cos(yaw) * speed;
@@ -359,9 +421,8 @@ DEFINE_HOOKED_METHOD(CreateMove, bool, void *this_, float input_sample_time, CUs
             pUpdateRate = g_pCVar->FindVar("cl_updaterate");
         else
         {
-            auto ratio      = std::clamp(cl_interp_ratio->GetFloat(), sv_client_min_interp_ratio->GetFloat(), sv_client_max_interp_ratio->GetFloat());
-            auto lerptime   = std::max(cl_interp->GetFloat(), ratio / (sv_maxupdaterate ? sv_maxupdaterate->GetFloat() : cl_updaterate->GetFloat()));
-            cmd->tick_count = TIME_TO_TICKS(CE_FLOAT(LOCAL_E, netvar.m_flSimulationTime) + lerptime);
+            float interp = MAX(cl_interp->GetFloat(), cl_interp_ratio->GetFloat() / pUpdateRate->GetFloat());
+            cmd->tick_count += TIME_TO_TICKS(interp);
         }
     }
     return ret;
@@ -378,7 +439,7 @@ void WriteCmd(IInput *input, CUserCmd *cmd, int sequence_nr)
 // This gets called before the other CreateMove, but since we run original first in here all the stuff gets called after normal CreateMove is done
 DEFINE_HOOKED_METHOD(CreateMoveInput, void, IInput *this_, int sequence_nr, float input_sample_time, bool arg3)
 {
-    bSendPackets = reinterpret_cast<bool *>(reinterpret_cast<uintptr_t>(__builtin_frame_address(1)) - 8);
+    bSendPackets = reinterpret_cast<bool *>((uintptr_t) __builtin_frame_address(1) - 8);
     // Call original function, includes Normal CreateMove
     original::CreateMoveInput(this_, sequence_nr, input_sample_time, arg3);
 
@@ -403,13 +464,17 @@ DEFINE_HOOKED_METHOD(CreateMoveInput, void, IInput *this_, int sequence_nr, floa
         return;
     }
 
+    PROF_SECTION(CreateMoveInput);
+
     // Run EC
     EC::run(EC::CreateMoveLate);
 
-    // Restore prediction
-    if (CE_GOOD(LOCAL_E) && engine_prediction::original_origin.IsValid())
-        engine_prediction::FinishEnginePrediction(RAW_ENT(LOCAL_E), current_late_user_cmd);
-
+    if (CE_GOOD(LOCAL_E))
+    {
+        // Restore prediction
+        if (engine_prediction::original_origin.IsValid())
+            engine_prediction::FinishEnginePrediction(RAW_ENT(LOCAL_E), current_late_user_cmd);
+    }
     // Write the usercmd
     WriteCmd(this_, current_late_user_cmd, sequence_nr);
 }

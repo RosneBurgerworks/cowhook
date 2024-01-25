@@ -10,7 +10,7 @@
 
 constexpr const char *CON_PREFIX = "cat_";
 
-constexpr unsigned short MAX_ENTITIES = 6400;
-constexpr unsigned char MAX_PLAYERS  = 100;
+constexpr int MAX_ENTITIES = 4096;
+constexpr int MAX_PLAYERS  = 100;
 // 0 is "World" but we still can have MAX_PLAYERS players, so consider that
-constexpr unsigned short PLAYER_ARRAY_SIZE = 1 + MAX_PLAYERS;
+constexpr int PLAYER_ARRAY_SIZE = 1 + MAX_PLAYERS;

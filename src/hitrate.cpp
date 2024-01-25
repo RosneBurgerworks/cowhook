@@ -1,3 +1,10 @@
+/*
+ * hitrate.cpp
+ *
+ *  Created on: Aug 16, 2017
+ *      Author: nullifiedcat
+ */
+
 #include "common.hpp"
 #include <hacks/Aimbot.hpp>
 #include <settings/Bool.hpp>
@@ -44,7 +51,7 @@ CatCommand debug_hitrate("debug_hitrate", "Debug hitrate",
 CatCommand debug_ammo("debug_ammo", "Debug ammo",
                       []()
                       {
-                          for (int i = 0; i < 4; ++i)
+                          for (int i = 0; i < 4; i++)
                           {
                               logging::Info("%d %d", i, CE_INT(LOCAL_E, netvar.m_iAmmo + i * 4));
                           }
@@ -73,13 +80,14 @@ void OnHit(bool crit, int idx, bool is_sniper)
         count_hits_sniper++;
     if (crit)
         count_hits_head++;
-    if ((crit || aimbot_target_body) && idx == aimbot_target_idx)
+    if (crit || aimbot_target_body)
     {
+        if (idx == aimbot_target_idx)
         {
             auto ent = ENTITY(idx);
             if (CE_GOOD(ent))
             {
-                hacks::anti_anti_aim::resolver_map[ent->player_info->friendsID].hits_in_a_row++;
+                hacks::shared::anti_anti_aim::resolver_map[ent->player_info->friendsID].hits_in_a_row++;
                 resolve_soon[idx] = false;
             }
         }
@@ -99,35 +107,28 @@ void Update()
     // Hitscan only
     if (CE_GOOD(weapon) && g_pLocalPlayer->weapon_mode == weapon_hitscan)
     {
+
         int ammo = CE_INT(LOCAL_E, netvar.m_iAmmo + 4);
         if (ammo < lastammo && !aimbot_shot.check(500) && !aimbot_target_idx)
-        {
             OnShot();
-        }
-
         lastammo = ammo;
         // Resolver
         if (LOCAL_W->m_iClassID() == CL_CLASS(CTFSniperRifle) || LOCAL_W->m_iClassID() == CL_CLASS(CTFSniperRifleDecap))
         {
             auto ch = (INetChannel *) g_IEngine->GetNetChannelInfo();
             if (ch)
-            {
                 for (int i = 1; i < PLAYER_ARRAY_SIZE; i++)
                 {
                     if (!resolve_soon[i])
-                    {
                         continue;
-                    }
-
                     // Get general latency and add a safety net
                     unsigned int delay = (ch->GetLatency(FLOW_OUTGOING) + ch->GetLatency(FLOW_INCOMING)) * 1000.0f + 100.0f;
                     if (resolve_timer[i].check(delay))
                     {
                         resolve_soon[i] = false;
-                        hacks::anti_anti_aim::increaseBruteNum(i);
+                        hacks::shared::anti_anti_aim::increaseBruteNum(i);
                     }
                 }
-            }
         }
     }
 }
@@ -137,16 +138,14 @@ class HurtListener : public IGameEventListener
 public:
     virtual void FireGameEvent(KeyValues *event)
     {
+        if (strcmp("player_hurt", event->GetName()))
+            return;
         if (GetPlayerForUserID(event->GetInt("attacker")) == g_IEngine->GetLocalPlayer())
         {
             if (CE_GOOD(LOCAL_W) && (LOCAL_W->m_iClassID() == CL_CLASS(CTFSniperRifle) || LOCAL_W->m_iClassID() == CL_CLASS(CTFSniperRifleDecap)))
-            {
                 OnHit(event->GetBool("crit"), event->GetInt("userid"), true);
-            }
             else if (CE_GOOD(LOCAL_W) && g_pLocalPlayer->weapon_mode == weapon_hitscan)
-            {
                 OnHit(false, event->GetInt("userid"), false);
-            }
         }
     }
 };
@@ -160,8 +159,8 @@ HurtListener &listener()
 InitRoutine init(
     []()
     {
-        g_IGameEventManager->AddListener(&listener(), "player_hurt", false);
+        g_IGameEventManager->AddListener(&listener(), false);
         EC::Register(
-            EC::Shutdown, []() { g_IGameEventManager->RemoveListener(&listener()); }, "SHUTDOWN_Hitrate");
+            EC::Shutdown, []() { g_IGameEventManager->RemoveListener(&listener()); }, "shutdown_hitrate");
     });
 } // namespace hitrate

@@ -1,3 +1,10 @@
+/*
+ * Created on 16.4.2020
+ * Author: BenCat07
+ *
+ * Copyright Nullworks 2020
+ */
+
 #include "common.hpp"
 #if ENABLE_VISUALS
 #include "drawing.hpp"
@@ -9,16 +16,15 @@
 #include "MiscTemporary.hpp"
 #include "Think.hpp"
 #include "Aimbot.hpp"
-#include "NavBot.hpp"
-
-namespace hacks::warp
+#include <Misc.hpp>
+#include <limits>
+namespace hacks::tf2::warp
 {
-
 static settings::Boolean enabled{ "warp.enabled", "false" };
 static settings::Boolean no_movement{ "warp.rapidfire.no-movement", "true" };
 static settings::Boolean rapidfire{ "warp.rapidfire", "false" };
 static settings::Int distance{ "warp.rapidfire.distance", "0" };
-static settings::Boolean rapidfire_zoom{ "warp.rapidfire.zoom", "false" };
+static settings::Boolean rapidfire_zoom{ "warp.rapidfire.zoom", "true" };
 static settings::Boolean wait_full{ "warp.rapidfire.wait-full", "true" };
 static settings::Button rapidfire_key{ "warp.rapidfire.key", "<null>" };
 static settings::Int rapidfire_key_mode{ "warp.rapidfire.key-mode", "1" };
@@ -32,14 +38,17 @@ static settings::Boolean charge_passively{ "warp.charge-passively", "true" };
 static settings::Boolean charge_in_jump{ "warp.charge-passively.jump", "true" };
 static settings::Boolean charge_no_input{ "warp.charge-passively.no-inputs", "false" };
 static settings::Int warp_movement_ratio{ "warp.movement-ratio", "6" };
-static settings::Boolean warp_on_damage{ "warp.on-hit", "false" };
+settings::Boolean dodge_projectile{ "warp.dodge_proj", "true" };
 static settings::Boolean warp_demoknight{ "warp.demoknight", "false" };
+static settings::Boolean warp_peek{ "warp.peek", "false" };
+static settings::Boolean warp_on_damage{ "warp.on-hit", "false" };
 static settings::Boolean warp_forward{ "warp.on-hit.forward", "false" };
 static settings::Boolean warp_backwards{ "warp.on-hit.backwards", "false" };
 static settings::Boolean warp_left{ "warp.on-hit.left", "true" };
 static settings::Boolean warp_right{ "warp.on-hit.right", "true" };
-static settings::Boolean warp_melee{ "warp.to.enemy", "false" };
 
+static settings::Boolean debug_seqout{ "debug.warp_seqout", "false" };
+static boost::unordered_flat_map<CachedEntity *, Vector> proj_map;
 // Hidden control rvars for communtiy servers
 static settings::Int maxusrcmdprocessticks("warp.maxusrcmdprocessticks", "24");
 
@@ -69,7 +78,6 @@ static settings::Int draw_string_y{ "warp.draw-info.y", "800" };
 
 // Need our own Text drawing
 static std::array<std::string, 32> warp_strings;
-
 #if ENABLE_VISUALS
 static size_t warp_strings_count{ 0 };
 static std::array<rgba_t, 32> warp_strings_colors{ colors::empty };
@@ -96,15 +104,15 @@ void DrawWarpStrings()
 }
 #endif
 
-static bool should_charge       = false;
-static int warp_amount          = 0;
-static int warp_amount_override = 0;
-static bool should_melee        = false;
-static bool charged             = false;
-
-static bool should_warp = true;
-static bool was_hurt    = false;
-
+static bool should_charge = false;
+static int warp_amount    = 0;
+int warp_amount_override  = 0;
+static bool should_melee  = false;
+static bool charged       = false;
+static bool was_hurt      = false;
+static bool should_warp   = true;
+static bool warp_dodge    = false;
+static float yaw_amount   = 90.0f;
 // Rapidfire key mode
 static bool key_valid = false;
 
@@ -152,7 +160,7 @@ float getFireDelay()
 
 bool canInstaZoom()
 {
-    return in_rapidfire_zoom || (g_pLocalPlayer->holding_sniper_rifle && CE_INT(LOCAL_E, netvar.iFlags) & FL_ONGROUND && current_user_cmd->buttons & IN_ATTACK2 && !HasCondition<TFCond_Zoomed>(LOCAL_E) && CE_FLOAT(LOCAL_W, netvar.flNextSecondaryAttack) <= SERVER_TIME);
+    return in_rapidfire_zoom || (g_pLocalPlayer->holding_sniper_rifle && current_user_cmd->buttons & IN_ATTACK2 && !HasCondition<TFCond_Zoomed>(LOCAL_E) && CE_FLOAT(LOCAL_W, netvar.flNextSecondaryAttack) <= g_GlobalVars->curtime);
 }
 
 // This is needed in order to make zoom/unzoom smooth even with insta zoom
@@ -221,6 +229,10 @@ bool shouldRapidfire()
     // Mouse 1 is held, do it.
     bool buttons_pressed = current_user_cmd && current_user_cmd->buttons & IN_ATTACK;
 
+    // Unless we are on a flamethrower, where we want both m1 and m2.
+    if (LOCAL_W->m_iClassID() == CL_CLASS(CTFFlameThrower))
+        buttons_pressed = current_user_cmd && current_user_cmd->buttons & (IN_ATTACK | IN_ATTACK2);
+
     if (g_pLocalPlayer->holding_sniper_rifle)
     {
         // Run if m2 is pressed and sniper rifle is ready
@@ -232,43 +244,199 @@ bool shouldRapidfire()
 
     switch (*rf_disable_on)
     {
-    default:
-        case 0: // Always on
-            return buttons_pressed;
-        case 1: // Disable on projectile
-            if (g_pLocalPlayer->weapon_mode == weapon_projectile)
-                return false;
-            break;
-        case 2: // Disable on melee
-            if (g_pLocalPlayer->weapon_mode == weapon_melee)
-                return false;
-            break;
-        case 3: // Disable on projectile and melee
-            if (g_pLocalPlayer->weapon_mode == weapon_projectile || g_pLocalPlayer->weapon_mode == weapon_melee)
-                return false;
-            break;
+    case 0: // Always on
+        return buttons_pressed;
+    case 1: // Disable on projectile
+        if (g_pLocalPlayer->weapon_mode == weapon_projectile)
+            return false;
+        break;
+    case 2: // Disable on melee
+        if (g_pLocalPlayer->weapon_mode == weapon_melee)
+            return false;
+        break;
+    case 3: // Disable on projectile and melee
+        if (g_pLocalPlayer->weapon_mode == weapon_projectile || g_pLocalPlayer->weapon_mode == weapon_melee)
+            return false;
+        break;
     }
 
     return buttons_pressed;
 }
 
+void dodgeProj(CachedEntity *proj_ptr)
+{
+
+    Vector eav;
+    const Vector player_origin = RAW_ENT(LOCAL_E)->GetAbsOrigin();
+    velocity::EstimateAbsVelocity(RAW_ENT(proj_ptr), eav);
+    // Sometimes EstimateAbsVelocity returns completely BS values (as in 0 for everything on say a rocket)
+    // The ent could also be an in-place sticky which we don't care about - we want to catch it while it's in the air
+    if (1 < eav.Length())
+    {
+        Vector proj_pos         = RAW_ENT(proj_ptr)->GetAbsOrigin();
+        float multipler         = 2.0f;
+        bool add_grav           = false;
+        float high_time         = 10;
+        float low_time          = 0;
+        float high_displacement = std::numeric_limits<float>::max();
+        float curr_grav         = g_ICvar->FindVar("sv_gravity")->GetFloat();
+        if (proj_ptr->m_Type() == ENTITY_PROJECTILE && ProjGravMult(proj_ptr->m_iClassID(), eav.Length()) > 0.001f)
+            add_grav = true;
+        // Couldn't find a cleaner way to get the projectiles gravity based on just having a pointer to the projectile itself
+        curr_grav = curr_grav * ProjGravMult(proj_ptr->m_iClassID(), eav.Length());
+        // Optimization loop. Just checks if the projectile can possibly hit within ~141HU
+
+        if (!add_grav)
+        {
+            float c_1 = ((float) (player_origin - proj_pos).Dot(eav)) / ((float) eav.Dot(eav));
+            // logging::Info("C_1 is %f for the entity id %d, the velocity is %f. The distance is %f", c_1, proj_ptr->m_Type(), eav.Length(), (eav * c_1 + proj_pos).DistTo(player_origin));
+            if (c_1 > 0)
+            {
+                float dist = (eav * c_1 + proj_pos).DistToSqr(player_origin);
+                if (dist > 40000)
+                    proj_map.insert({ proj_ptr, Vector(0, 0, 0) });
+                else
+                    proj_map.insert({ proj_ptr, eav });
+            }
+            return;
+        }
+        float last_displacement = high_displacement;
+        int sign                = 1;
+        int repeats             = 0;
+        while (high_time > 0.01f)
+        {
+
+            Vector temp_pos = (eav * high_time) + proj_pos;
+            temp_pos.z      = temp_pos.z - 0.5 * curr_grav * high_time * high_time;
+            float curr_disp = temp_pos.DistToSqr(player_origin);
+            if (curr_disp < high_displacement)
+            {
+                repeats           = 0;
+                high_displacement = curr_disp;
+                high_time -= multipler * sign;
+                if (multipler > 0.05f)
+                    multipler /= 2.0f;
+            }
+            else if (last_displacement < curr_disp)
+            {
+                ++repeats;
+                sign *= -1;
+            }
+            else
+            {
+                repeats = 0;
+            }
+            if (repeats > 2)
+            {
+                // logging::Info(" entity id %d, the velocity is %f. The distance is %f", proj_ptr->m_Type(), eav.Length(), curr_disp);
+                proj_map.insert({ proj_ptr, Vector(0, 0, 0) });
+                return;
+            }
+            last_displacement = curr_disp;
+            if (high_displacement < 40000)
+            {
+                // logging::Info(" entity id %d, the velocity is %f. The distance is %f", proj_ptr->m_Type(), eav.Length(), curr_disp);
+                proj_map.insert({ proj_ptr, eav });
+                return;
+            }
+            else
+            {
+                // logging::Info(" entity id %d, the velocity is %f. The distance is %f", proj_ptr->m_Type(), eav.Length(), curr_disp);
+                proj_map.insert({ proj_ptr, Vector(0, 0, 0) });
+                return;
+            }
+        }
+    }
+}
+float hitbox_size_proj(int class_id)
+{
+    switch (class_id)
+    {
+    case CL_CLASS(CTFProjectile_Rocket):
+        return 4.0f;
+    case CL_CLASS(CTFGrenadePipebombProjectile):
+        return 4.0f;
+    case CL_CLASS(CTFProjectile_Flare):
+        return 3.0f;
+    case CL_CLASS(CTFProjectile_EnergyBall):
+        return 8.0f;
+    case CL_CLASS(CTFProjectile_GrapplingHook):
+    case CL_CLASS(CTFProjectile_HealingBolt):
+    case CL_CLASS(CTFProjectile_Arrow):
+        return 1.0f;
+    case CL_CLASS(CTFProjectile_SentryRocket):
+        return 2.0f;
+    case CL_CLASS(CTFProjectile_Throwable):
+        return 4.0f;
+    }
+    return 1.0f;
+}
+static void dodgeProj_cm()
+{
+    if (!LOCAL_E->m_bAlivePlayer() || proj_map.empty() || !dodge_projectile)
+        return;
+    Vector player_pos = RAW_ENT(LOCAL_E)->GetAbsOrigin();
+    for (const auto &[proj_ptr, proj_vec] : proj_map)
+    {
+        if (proj_vec.Length() < 0.1f)
+        {
+            if (CE_GOOD(proj_ptr))
+                continue;
+            else
+                proj_map.erase(proj_ptr);
+            continue;
+        }
+        if (CE_GOOD(proj_ptr))
+        {
+            // Since we are sending this warp next tick we need to compensate for fast moving projectiles
+            // 2 Ticks in advance is a fairly safe interval
+            float c_1   = ((float) (g_pLocalPlayer->v_Origin - RAW_ENT(proj_ptr)->GetAbsOrigin()).Dot(proj_vec)) / ((float) proj_vec.Dot(proj_vec));
+            float ticks = TIME_TO_TICKS(c_1);
+            if (ticks > 30)
+                continue;
+            float max_speed   = CE_FLOAT(LOCAL_E, netvar.m_flMaxspeed);
+            Vector dist       = RAW_ENT(proj_ptr)->GetAbsOrigin();
+            float proj_hitbox = hitbox_size_proj(proj_ptr->m_iClassID());
+            // Warp sooner for fast moving projectiles.
+            trace_t trace;
+            Ray_t ray;
+            ray.Init(dist, player_pos, Vector(-proj_hitbox, -proj_hitbox, -proj_hitbox), Vector(proj_hitbox, proj_hitbox, proj_hitbox));
+            g_ITrace->TraceRay(ray, MASK_SHOT_HULL, NULL, &trace);
+            if (((IClientEntity *) trace.m_pEnt) == RAW_ENT(LOCAL_E) || trace.DidHit() || trace.endpos.DistToSqr(player_pos) < 1600)
+            {
+                // logging::Info("ENTERED");
+                //  We need to determine wether the projectile is coming in from the left or right of us so we don't warp into the projectile.
+                Vector result = GetAimAtAngles(g_pLocalPlayer->v_Eye, RAW_ENT(proj_ptr)->GetAbsOrigin(), LOCAL_E) - g_pLocalPlayer->v_OrigViewangles;
+
+                if (0 <= result.y)
+                    yaw_amount = -90.0f;
+                else
+                    yaw_amount = 90.0f;
+                was_hurt   = true;
+                warp_dodge = true;
+                proj_map.erase(proj_ptr);
+            }
+        }
+        else
+            proj_map.erase(proj_ptr);
+    }
+}
 // Should we warp?
 bool shouldWarp(bool check_amount)
 {
-    if (!g_IEngine->IsInGame())
-        return false;
-    auto nearest = hacks::NavBot::getNearestPlayerDistance();
+
     return
-        // Warp key held?
-        (warp_key && warp_key.isKeyDown()
-         // Hurt warp?
-         || was_hurt
-         // Rapidfire and trying to attack?
-         || shouldRapidfire()
-         // Option is enabled, in melee range and target is visible to us
-         || *warp_melee && nearest.second < 175.0f && hacks::NavBot::isVisible)
-            // Do we have enough to warp?
-            && (!check_amount || warp_amount);
+        // Ingame?
+        (g_IEngine->IsInGame() &&
+         // Warp key held?
+         ((warp_key && warp_key.isKeyDown())
+          // Hurt warp?
+          || was_hurt
+          // Rapidfire and trying to attack?
+          || (shouldRapidfire() &&
+              // Do we have enough to warp?
+              (!check_amount || warp_amount)) ||
+          warp_dodge));
 }
 
 // How many ticks of excess we have (for decimal speeds)
@@ -292,6 +460,8 @@ int GetWarpAmount(bool finalTick)
     if (!*maxusrcmdprocessticks)
         max_extra_ticks = INT_MAX;
     float warp_amount_preprocessed = std::max(*speed, 0.05f);
+    if (warp_dodge)
+        warp_amount_preprocessed = 23.0f;
 
     // How many ticks to warp, add excess too
     int warp_amount_processed = std::floor(warp_amount_preprocessed) + std::floor(excess_ticks);
@@ -324,6 +494,7 @@ void Warp(float accumulated_extra_samples, bool finalTick)
         return;
     }
 
+    PROF_SECTION(warp_profiler);
 
     int warp_ticks = warp_amount;
     if (warp_amount_override)
@@ -358,7 +529,7 @@ void Warp(float accumulated_extra_samples, bool finalTick)
                 hooked_methods::UpdatePred();
 
             if (in_rapidfire)
-                hacks::aimbot::last_target_ignore_timer = tickcount + 12;
+                hacks::shared::aimbot::last_target_ignore_timer = tickcount + 12;
             original(accumulated_extra_samples, finalTick);
             // Only decrease ticks for the final CL_Move tick
             if (finalTick)
@@ -370,7 +541,6 @@ void Warp(float accumulated_extra_samples, bool finalTick)
         }
         ticks_to_add = 0;
     }
-
     cl_move_detour.RestorePatch();
 
     if (warp_amount_override)
@@ -379,6 +549,7 @@ void Warp(float accumulated_extra_samples, bool finalTick)
     if (warp_ticks <= 0)
     {
         was_hurt   = false;
+        warp_dodge = false;
         warp_ticks = 0;
         if (warp_amount_override)
             warp_amount_override = 0;
@@ -520,6 +691,7 @@ void handleMinigun()
 // This is called first, it subsequently calls all the CreateMove functions.
 void CL_Move_hook(float accumulated_extra_samples, bool bFinalTick)
 {
+
     CL_Move_t original = (CL_Move_t) cl_move_detour.GetOriginalFunc();
     original(accumulated_extra_samples, bFinalTick);
     cl_move_detour.RestorePatch();
@@ -547,11 +719,11 @@ void CL_Move_hook(float accumulated_extra_samples, bool bFinalTick)
 
 // Run before we call the original, we need to adjust the tickcount on the command
 // and the global variable so our time based functions are synced properly.
-void CreateMoveEarly()
+static void CreateMoveEarly()
 {
     // Update key state
     key_valid = UpdateRFKey();
-    if (hacks::warp::in_rapidfire && current_user_cmd)
+    if (hacks::tf2::warp::in_rapidfire && current_user_cmd)
     {
         if (current_user_cmd)
         {
@@ -564,17 +736,17 @@ void CreateMoveEarly()
 static float original_curtime = 0.0f;
 
 // Run before prediction so we can do Faststop logic
-void CreateMovePrePredict()
+static void CreateMovePrePredict()
 {
     // Attempt to stop fast in place to make movement smoother
     if (in_rapidfire && no_movement)
         FastStop();
     if (in_rapidfire_zoom)
     {
-        float adjusted_curtime = SERVER_TIME;
+        float adjusted_curtime = g_GlobalVars->curtime;
         // Original curtime we need to use while in here
         if (first_warp_tick)
-            original_curtime = SERVER_TIME;
+            original_curtime = g_GlobalVars->curtime;
 
         // Update the data
         g_pLocalPlayer->bZoomed     = true;
@@ -589,9 +761,13 @@ void CreateMovePrePredict()
 
 // This calls the warp logic and applies some rapidfire specific logic afterwards
 // if it applies.
-void CreateMove()
+static void CreateMove()
 {
     warpLogic();
+    if ((bool) hacks::tf2::warp::dodge_projectile && CE_GOOD(g_pLocalPlayer->entity))
+        for (auto const &ent : entity_cache::valid_ents)
+            if (ent->m_Type() == ENTITY_PROJECTILE && ent->m_bEnemy() && proj_map.find(ent) == proj_map.end())
+                dodgeProj(ent);
     // Either in rapidfire, or the tick just after. Either way we need to force bSendPackets in some way.
     bool should_rapidfire = shouldRapidfire();
     if (in_rapidfire || should_rapidfire || was_in_warp)
@@ -614,7 +790,9 @@ void warpLogic()
 {
     if (!enabled)
         return;
-    if (CE_BAD(LOCAL_E) || !LOCAL_E->m_bAlivePlayer() || CE_BAD(LOCAL_W))
+    if (CE_BAD(LOCAL_E) || !LOCAL_E->m_bAlivePlayer())
+        return;
+    if (CE_BAD(LOCAL_W))
         return;
 
     // Handle minigun in rapidfire
@@ -692,7 +870,10 @@ void warpLogic()
             if (yaw_selections.empty())
                 return;
             // Select randomly
-            yaw = yaw_selections[UniformRandomInt(0, yaw_selections.size() - 1)];
+            if (warp_dodge)
+                yaw = yaw_amount;
+            else
+                yaw = yaw_selections[UniformRandomInt(0, yaw_selections.size() - 1)];
         }
         // The yaw we want to achieve
         float actual_yaw = DEG2RAD(yaw);
@@ -722,9 +903,9 @@ void warpLogic()
                 // Find an entity meeting the Criteria and closest to crosshair
                 std::pair<CachedEntity *, float> result{ nullptr, FLT_MAX };
 
-                for (int i = 1; i <= g_IEngine->GetMaxClients(); ++i)
+                for (auto const &ent : entity_cache::player_cache)
                 {
-                    CachedEntity *ent = ENTITY(i);
+
                     if (CE_BAD(ent) || !ent->m_bAlivePlayer() || !ent->m_bEnemy() || !player_tools::shouldTarget(ent))
                         continue;
                     // No hitboxes
@@ -820,6 +1001,65 @@ void warpLogic()
             break;
         }
     }
+    // Warp peaking
+    else if (warp_peek)
+    {
+        switch (current_peek_state)
+        {
+        case IDLE:
+        {
+            // Not doing anything, update warp amount
+            charge_at_start = warp_amount;
+
+            Vector vel;
+            velocity::EstimateAbsVelocity(RAW_ENT(LOCAL_E), vel);
+
+            // if we move more than 1.0 HU/s and buttons are pressed, and we are grounded, go to move towards statement...
+            if (CE_INT(LOCAL_E, netvar.iFlags) & FL_ONGROUND && !vel.IsZero(1.0f) && current_user_cmd->buttons & (IN_FORWARD | IN_BACK | IN_MOVELEFT | IN_MOVERIGHT))
+                current_peek_state = MOVE_TOWARDS;
+            // ...else don't warp
+            else
+            {
+                should_warp = false;
+                break;
+            }
+
+            [[fallthrough]];
+        }
+        case MOVE_TOWARDS:
+        {
+            // Just wait until we used about a third of our warp, the rest has to be used for moving back
+            if (warp_amount <= charge_at_start * (2.0f / 3.0f))
+                current_peek_state = MOVE_BACK;
+            break;
+        }
+        case MOVE_BACK:
+        {
+            // Inverse direction if we still have warp left
+            if (warp_amount)
+            {
+                current_user_cmd->forwardmove *= -1.0f;
+                current_user_cmd->sidemove *= -1.0f;
+                break;
+            }
+            // ... Else we stop in our tracks
+            else
+                current_peek_state = STOP;
+
+            [[fallthrough]];
+        }
+        case STOP:
+        {
+            // Stop dead in our tracks while key is still held
+            current_user_cmd->forwardmove = 0.0f;
+            current_user_cmd->sidemove    = 0.0f;
+            break;
+        }
+        default:
+            break;
+        }
+    }
+    was_hurt_last_tick = was_hurt;
 }
 
 // The second to last thing that gets called, its only job is to write the commands locally and then queue for sending.
@@ -828,7 +1068,7 @@ void warpLogic()
 // Only called if *bSendPackets is true.
 void CL_SendMove_hook()
 {
-    uint8 data[4000];
+    byte data[4000];
 
     // the +4 one is choked commands
     int nextcommandnr = NET_INT(g_IBaseClientState, offsets::lastoutgoingcommand()) + NET_INT(g_IBaseClientState, offsets::lastoutgoingcommand() + 4) + 1;
@@ -1022,13 +1262,14 @@ void rvarCallback(settings::VariableBase<bool> &, bool)
 static InitRoutine init(
     []()
     {
-        static auto cl_move_addr = CSignature::GetEngineSignature("55 89 E5 57 56 53 81 EC 9C 00 00 00 83 3D ? ? ? ? 01");
+        static auto cl_move_addr = gSignatures.GetEngineSignature("55 89 E5 57 56 53 81 EC 9C 00 00 00 83 3D ? ? ? ? 01");
         cl_move_detour.Init(cl_move_addr, (void *) CL_Move_hook);
 
         EC::Register(EC::LevelShutdown, LevelShutdown, "warp_levelshutdown");
         EC::Register(EC::CreateMove, CreateMove, "warp_createmove", EC::very_late);
         EC::Register(EC::CreateMoveWarp, CreateMove, "warp_createmovew", EC::very_late);
         EC::Register(EC::CreateMove_NoEnginePred, CreateMovePrePredict, "warp_prepredict");
+        EC::Register(EC::CreateMove, dodgeProj_cm, "warp_dodgeproj", EC::average);
         EC::Register(EC::CreateMoveEarly, CreateMoveEarly, "warp_createmove_early", EC::very_early);
         g_IEventManager2->AddListener(&listener, "player_hurt", false);
         EC::Register(
@@ -1048,5 +1289,4 @@ static InitRoutine init(
         EC::Register(EC::Draw, Draw, "warp_draw");
 #endif
     });
-
-} // namespace hacks::warp
+} // namespace hacks::tf2::warp

@@ -1,3 +1,7 @@
+/*
+  Created on 02.07.18.
+*/
+
 #pragma once
 
 #include <unordered_map>
@@ -41,6 +45,7 @@ public:
     void add(IVariable &me, std::string name);
     void applyDefaults();
     IVariable *lookup(const std::string &string);
-    std::unordered_map<std::string, VariableDescriptor> registered{};
+
+    boost::unordered_flat_map<std::string, VariableDescriptor> registered{};
 };
 } // namespace settings

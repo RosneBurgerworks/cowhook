@@ -1,5 +1,3 @@
-// Made by nullwork 
-
 #include "common.hpp"
 #include "HookedMethods.hpp"
 #include "soundcache.hpp"

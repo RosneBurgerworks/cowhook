@@ -1,3 +1,9 @@
+//========= Copyright Valve Corporation, All rights reserved. ============//
+//
+// Purpose: A higher level link library for general use in the game and tools.
+//
+//===========================================================================//
+
 #include <tier1/tier1.h>
 #include "tier0/dbg.h"
 #include "vstdlib/iprocessutils.h"

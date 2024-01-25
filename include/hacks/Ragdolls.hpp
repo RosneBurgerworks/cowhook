@@ -1,9 +1,3 @@
-/*
-
-Ragdolls.hpp
-
-*/
-
 #pragma once
 #include "sdk/dt_recv_redef.h"
 

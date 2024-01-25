@@ -15,6 +15,7 @@ class CachedEntity;
 
 namespace player_tools
 {
+
 bool shouldTargetSteamId(unsigned id);
 bool shouldTarget(CachedEntity *player);
 

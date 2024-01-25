@@ -10,6 +10,7 @@
 
 namespace re
 {
+
 class C_MannVsMachineStats
 {
 public:

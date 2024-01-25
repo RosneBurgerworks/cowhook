@@ -37,7 +37,7 @@ struct font
     void changeSize(int new_font_size);
     void rebuild();
     ImFontAtlas *font_atlas{ nullptr };
-    std::unordered_map<int, ImFont *> size_map;
+    boost::unordered_flat_map<int, ImFont *> size_map;
 };
 
 class Texture

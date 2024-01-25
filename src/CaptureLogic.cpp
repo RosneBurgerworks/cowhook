@@ -22,10 +22,11 @@ void Update()
         return;
     // Find flags if missing
     if (!flags[0].ent || !flags[1].ent)
-        for (auto const &ent : entity_cache::valid_ents)
+        for (int i = g_IEngine->GetMaxClients() + 1; i < MAX_ENTITIES; i++)
         {
+            CachedEntity *ent = ENTITY(i);
             // We cannot identify a bad entity as a flag due to the unreliability of it
-            if (ent->m_iClassID() != CL_CLASS(CCaptureFlag))
+            if (CE_BAD(ent) || ent->m_iClassID() != CL_CLASS(CCaptureFlag))
                 continue;
 
             // Store flags
@@ -47,6 +48,10 @@ void Update()
             flag = flag_info();
             continue;
         }
+
+        // Cannot use "bad" flag, but it is still potentially valid
+        if (CE_BAD(flag.ent))
+            continue;
 
         int flag_type = CE_INT(flag.ent, netvar.m_nFlagType);
 
@@ -149,7 +154,7 @@ ETFFlagStatus getStatus(int team)
 namespace plcontroller
 {
 
-// Valid_ents that controls all the payloads for each team. Red team is first, then comes blue team.
+// Array that controls all the payloads for each team. Red team is first, then comes blue team.
 static std::array<std::vector<CachedEntity *>, 2> payloads;
 static Timer update_payloads{};
 
@@ -162,11 +167,11 @@ void Update()
         for (auto &entry : payloads)
             entry.clear();
 
-        for (auto const &ent : entity_cache::valid_ents)
+        for (int i = g_IEngine->GetMaxClients() + 1; i < MAX_ENTITIES; i++)
         {
-            
+            CachedEntity *ent = ENTITY(i);
             // Not the object we need or invalid (team)
-            if (ent->m_iClassID() != CL_CLASS(CObjectCartDispenser) || ent->m_iTeam() < TEAM_RED || ent->m_iTeam() > TEAM_BLU)
+            if (CE_BAD(ent) || ent->m_iClassID() != CL_CLASS(CObjectCartDispenser) || ent->m_iTeam() < TEAM_RED || ent->m_iTeam() > TEAM_BLU)
                 continue;
             int team = ent->m_iTeam();
 
@@ -188,7 +193,7 @@ std::optional<Vector> getClosestPayload(Vector source, int team)
     std::optional<Vector> best_pos;
 
     // Find best payload
-    for (auto &payload : entry)
+    for (auto payload : entry)
     {
         if (CE_BAD(payload) || payload->m_iClassID() != CL_CLASS(CObjectCartDispenser))
             continue;
@@ -211,7 +216,7 @@ void LevelInit()
 namespace cpcontroller
 {
 
-std::array<cp_info, MAX_CONTROL_POINTS+1> controlpoint_data;
+std::array<cp_info, MAX_CONTROL_POINTS> controlpoint_data;
 CachedEntity *objective_resource = nullptr;
 
 struct point_ignore
@@ -236,9 +241,10 @@ void UpdateObjectiveResource()
     if (CE_GOOD(objective_resource) && objective_resource->m_iClassID() == CL_CLASS(CTFObjectiveResource))
         return;
     // Find ObjectiveResource and gamerules
-    for (auto const &ent : entity_cache::valid_ents)
+    for (int i = g_IEngine->GetMaxClients() + 1; i < MAX_ENTITIES; i++)
     {
-        if (ent->m_iClassID() != CL_CLASS(CTFObjectiveResource))
+        CachedEntity *ent = ENTITY(i);
+        if (CE_BAD(ent) || ent->m_iClassID() != CL_CLASS(CTFObjectiveResource))
             continue;
         // Found it
         objective_resource = ent;
@@ -371,12 +377,12 @@ void UpdateControlPoints()
         return;
     // Clear the invalid controlpoints
     if (num_cp <= MAX_CONTROL_POINTS)
-        for (int i = num_cp; i < MAX_CONTROL_POINTS; ++i)
-            controlpoint_data[i] = cp_info();
+        for (int i = num_cp; i < MAX_CONTROL_POINTS; i++)
+            controlpoint_data.at(i) = cp_info();
 
-    for (int i = 0; i < num_cp; ++i)
+    for (int i = 0; i < num_cp; i++)
     {
-        auto &data    = controlpoint_data[i];
+        auto &data    = controlpoint_data.at(i);
         data.cp_index = i;
 
         // Update position (m_vCPPositions[index])
@@ -384,9 +390,9 @@ void UpdateControlPoints()
     }
 
     if (capstatus_update.test_and_set(1000))
-        for (int i = 0; i < num_cp; ++i)
+        for (int i = 0; i < num_cp; i++)
         {
-            auto &data = controlpoint_data[i];
+            auto &data = controlpoint_data.at(i);
             // Check accessibility for both teams, requires alot of checks
             data.can_cap.at(0) = isPointUseable(i, TEAM_RED);
             data.can_cap.at(1) = isPointUseable(i, TEAM_BLU);
@@ -466,7 +472,7 @@ void Update()
 } // namespace cpcontroller
 
 // Main handlers
-static void CreateMove()
+void CreateMove()
 {
     flagcontroller::Update();
     plcontroller::Update();

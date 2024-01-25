@@ -6,11 +6,10 @@
  */
 
 #pragma once
-
 #include "reclasses.hpp"
-
 namespace re
 {
+
 class CTFPartyClient
 {
 public:
@@ -27,7 +26,6 @@ public:
     char RequestLeaveForMatch(int type);
     int BInvitePlayerToParty(CSteamID steamid);
     int BRequestJoinPlayer(CSteamID steamid);
-    int CancelOutgoingJoinRequestOrIncomingInvite(CSteamID steamid);
     static bool BInQueue(CTFPartyClient *this_);
     int GetNumOnlineMembers();
     int GetNumMembers();
@@ -36,7 +34,6 @@ public:
     int KickPlayer(CSteamID steamid);
     bool GetCurrentPartyLeader(CSteamID &id);
 };
-
 class ITFMatchGroupDescription
 {
 public:
@@ -46,5 +43,5 @@ public:
     bool m_bForceCompetitiveSettings;
 };
 
-ITFMatchGroupDescription *GetMatchGroupDescription(const CGameRules::EMatchGroup &eGroup);
+ITFMatchGroupDescription *GetMatchGroupDescription(int &idx);
 } // namespace re

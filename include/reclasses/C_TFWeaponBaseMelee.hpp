@@ -11,6 +11,7 @@
 
 namespace re
 {
+
 class C_TFWeaponBaseMelee : public C_TFWeaponBase
 {
 public:
@@ -43,7 +44,7 @@ public:
             CondBitSet<TFCond_Charging, true>(CE_VAR(owner_ce, netvar.iCond, condition_data_s));
         }
 
-        return_value = ATTRIB_HOOK_FLOAT(return_value, "melee_range_multiplier", RAW_ENT(LOCAL_W), nullptr, true);
+        return_value = ATTRIB_HOOK_FLOAT(return_value, "melee_range_multiplier", RAW_ENT(LOCAL_W), 0x0, true);
 
         return return_value;
     }

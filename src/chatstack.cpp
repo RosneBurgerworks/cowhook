@@ -24,6 +24,7 @@ void OnCreateMove()
     if (!stack.empty())
     {
         const msg_t &msg = stack.top();
+        stack.pop();
         if (msg.text.size())
         {
             // logging::Info("Saying %s %i", msg.text.c_str(), msg.text.size());
@@ -33,7 +34,6 @@ void OnCreateMove()
                 g_IEngine->ServerCmd(format("say \"", msg.text.c_str(), '"').c_str());
             last_say = g_GlobalVars->curtime;
         }
-        stack.pop();
     }
 }
 

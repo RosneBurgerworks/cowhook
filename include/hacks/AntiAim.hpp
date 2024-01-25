@@ -1,5 +1,5 @@
 /*
- * AntiAim.hpp
+ * AntiAim.h
  *
  *  Created on: Oct 26, 2016
  *      Author: nullifiedcat
@@ -10,7 +10,7 @@
 
 class CUserCmd;
 
-namespace hacks::antiaim
+namespace hacks::shared::antiaim
 {
 extern bool force_fakelag;
 extern float used_yaw;
@@ -19,4 +19,4 @@ bool ShouldAA(CUserCmd *cmd);
 void ProcessUserCmd(CUserCmd *cmd);
 bool isEnabled();
 void SendNetMessage(INetMessage &msg);
-} // namespace hacks::antiaim
+} // namespace hacks::shared::antiaim

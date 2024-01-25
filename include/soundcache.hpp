@@ -6,7 +6,7 @@
 
 namespace soundcache
 {
-struct CSndInfo_t
+    struct CSndInfo_t
 {
     Vector m_pOrigin;
 };
@@ -17,7 +17,7 @@ struct SoundStruct
     Timer last_update;
 };
 
-extern std::unordered_map<int, SoundStruct> sound_cache;
+extern boost::unordered_flat_map<int, SoundStruct> sound_cache;
 inline void cache_sound(const Vector *Origin, int source)
 {
     // Just in case
@@ -25,8 +25,7 @@ inline void cache_sound(const Vector *Origin, int source)
         return;
     sound_cache[source].sound.m_pOrigin = *Origin;
     sound_cache[source].last_update.update();
-}
-
+}    
 inline std::optional<Vector> GetSoundLocation(int entid)
 {
     auto it = sound_cache.find(entid);
@@ -34,4 +33,5 @@ inline std::optional<Vector> GetSoundLocation(int entid)
         return std::nullopt;
     return it->second.sound.m_pOrigin;
 }
+
 } // namespace soundcache

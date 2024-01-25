@@ -5,7 +5,8 @@
  *      Author: nullifiedcat
  */
 
-#pragma once
+#ifndef AVERAGER_HPP_
+#define AVERAGER_HPP_
 
 #include <cstddef>
 #include <vector>
@@ -24,7 +25,7 @@ public:
     /*
      * Initialize Averager with a given size
      */
-    inline explicit Averager(size_t _size)
+    inline Averager(size_t _size)
     {
         resize(_size);
     }
@@ -58,10 +59,13 @@ public:
         values_[value_index_++] = value;
         value_ += value;
         if (value_index_ > value_count_)
+        {
             value_count_ = value_index_;
-
+        }
         if (value_index_ >= size_)
+        {
             value_index_ = 0;
+        }
     }
     /*
      * Pushes all values in initializer list
@@ -69,7 +73,9 @@ public:
     inline void push(std::initializer_list<T> list)
     {
         for (const auto &f : list)
+        {
             push(f);
+        }
     }
     /*
      * Returns the average value, returns 0 if no values were pushed
@@ -103,3 +109,5 @@ private:
     size_t value_index_{ 0 };
     T value_{};
 };
+
+#endif /* AVERAGER_HPP_ */

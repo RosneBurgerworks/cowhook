@@ -3,10 +3,12 @@
     NON-CONSTEXPR HEADER FOR $mod
 */
 
-#pragma once
+#ifndef DUMMY_AUTOGEN_HPP
+#define DUMMY_AUTOGEN_HPP
 
 namespace client_classes
 {
+
 class dummy
 {
 public:
@@ -536,3 +538,5 @@ public:
 
 extern dummy dummy_list;
 } // namespace client_classes
+
+#endif /* DUMMY_AUTOGEN_HPP */

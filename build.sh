@@ -1,12 +1,4 @@
 #!/usr/bin/env bash
-pushd external/
-rm -rf boost-cmake
-rm -rf source-sdk-2013-headers
-rm -rf libxoverlay
-rm -rf TF2_NavFile_Reader
-rm -rf MicroPather
-rm -rf simple-ipc
-popd
 
 pushd external/
 if [ ! -e boost-cmake ]; then
@@ -28,7 +20,7 @@ if [ ! -e MicroPather ]; then
 git clone https://github.com/nullworks/MicroPather
 fi
 if [ ! -e simple-ipc ]; then
-git clone https://github.com/nullworks/simple-ipc.git
+git clone https://github.com/AOriginalUsername/simple-ipc.git
 fi
 popd
 
@@ -49,5 +41,3 @@ sudo bash -c "cd \"$cwd\"; cmake --build . --target data" || {
 }
 popd
 echo -e "\n\033[1;34mcowhook updated successfully\n\033[0m"
-
-

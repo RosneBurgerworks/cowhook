@@ -20,7 +20,7 @@ public:
     enum SpectatorState
     {
         NONE,
-        ANY,
+        THIRDPERSON,
         FIRSTPERSON
     };
 
@@ -48,7 +48,7 @@ public:
     Vector v_Origin;
     Vector v_Eye;
     int entity_idx;
-    CachedEntity *entity{ nullptr };
+    CachedEntity *entity{ 0 };
     CachedEntity *weapon();
     bool weapon_melee_damage_tick;
     Vector v_OrigViewangles;

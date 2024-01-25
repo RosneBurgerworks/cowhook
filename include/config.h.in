@@ -3,6 +3,8 @@
 #define OFF 0
 #define ON 1
 
+#define GAME_SPECIFIC @GameSpecific@
+#define GAME @Game@
 #define ENABLE_GUI @EnableGUI@
 #define ENABLE_IPC @EnableIPC@
 #define DATA_PATH "@DataPath@"
@@ -10,6 +12,8 @@
 #define ENABLE_TEXTMODE_STDIN @EnableTextmodeStdin@
 #define ENABLE_TEXTMODE @Textmode@
 #define ENABLE_BINARYMODE @Internal_Binarymode@
+#define ENABLE_PROFILER @EnableProfiler@
+#define ENABLE_NULLNEXUS @EnableNullNexus@
 #define ENABLE_LOGGING @EnableLogging@
 #define ENABLE_CLIP @EnableClip@
 

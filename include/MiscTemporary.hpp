@@ -32,6 +32,8 @@ extern bool freecam_is_toggled;
 #endif
 extern settings::Boolean clean_chat;
 
+extern settings::Boolean clean_screenshots;
+extern settings::Boolean crypt_chat;
 extern settings::Boolean nolerp;
 extern float backup_lerp;
 extern settings::Int fakelag_amount;
@@ -49,4 +51,6 @@ extern DetourHook cl_warp_sendmovedetour;
 extern DetourHook cl_nospread_sendmovedetour;
 namespace hooked_methods
 {
+void sendIdentifyMessage(bool reply);
+extern settings::Boolean identify;
 } // namespace hooked_methods

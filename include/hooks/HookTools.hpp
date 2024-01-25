@@ -1,9 +1,11 @@
 #pragma once
 
+#include "core/profiler.hpp"
 #include <array>
 
 namespace EC
 {
+
 enum ec_types
 {
     /* Note: engine prediction is run on this kind of CreateMove */
@@ -11,7 +13,7 @@ enum ec_types
     /* Note: this is the CreateMove one layer higher, and should only be used for things that mess with command number*/
     CreateMoveLate,
     /* This kind of CreateMove will run earlier than "CreateMove" events
-     * and guaranteed to run before EnginePrediction
+     * and guranteed to run before EnginePrediction
      * This is NEEDED for any kind of movement
      */
     CreateMove_NoEnginePred,

@@ -1,3 +1,5 @@
+// This file just exists because the setupbones reconstruction needs so so
+// many Mathlib functions, and i do not want to clutter helpers.cpp
 #include "common.hpp"
 
 void AngleMatrix(const QAngle &angles, matrix3x4_t &matrix)
@@ -92,7 +94,11 @@ void QuaternionAngles(const Quaternion &q, RadianEuler &angles)
     Assert(s_bMathlibInitialized);
     Assert(q.IsValid());
 
-    angles = RadianEuler(0, 0, 0);
+    // FIXME: doing it this way calculates too much data, needs to do an optimized version...
+    matrix3x4_t matrix;
+    QuaternionMatrix(q, matrix);
+    MatrixAngles(matrix, angles);
+
     Assert(angles.IsValid());
 }
 
@@ -100,24 +106,27 @@ void QuaternionAlign(const Quaternion &p, const Quaternion &q, Quaternion &qt)
 {
     Assert(s_bMathlibInitialized);
 
+    // FIXME: can this be done with a quat dot product?
+
     int i;
+    // decide if one of the quaternions is backwards
     float a = 0;
     float b = 0;
-    for (i = 0; i < 4; ++i)
+    for (i = 0; i < 4; i++)
     {
         a += (p[i] - q[i]) * (p[i] - q[i]);
         b += (p[i] + q[i]) * (p[i] + q[i]);
     }
     if (a > b)
     {
-        for (i = 0; i < 4; ++i)
+        for (i = 0; i < 4; i++)
         {
             qt[i] = -q[i];
         }
     }
     else if (&qt != &q)
     {
-        for (i = 0; i < 4; ++i)
+        for (i = 0; i < 4; i++)
         {
             qt[i] = q[i];
         }
@@ -334,6 +343,8 @@ void QuaternionScale(const Quaternion &p, float t, Quaternion &q)
 #endif
 
     Assert(q.IsValid());
+
+    return;
 }
 
 // qt = p * q
@@ -470,7 +481,7 @@ void QuaternionBlendNoAlign(const Quaternion &p, const Quaternion &q, float t, Q
     // 0.0 returns p, 1.0 return q.
     sclp = 1.0f - t;
     sclq = t;
-    for (i = 0; i < 4; ++i)
+    for (i = 0; i < 4; i++)
     {
         qt[i] = sclp * p[i] + sclq * q[i];
     }
@@ -588,7 +599,7 @@ void QuaternionSlerpNoAlign(const Quaternion &p, const Quaternion &q, float t, Q
             sclp = 1.0f - t;
             sclq = t;
         }
-        for (i = 0; i < 4; ++i)
+        for (i = 0; i < 4; i++)
         {
             qt[i] = sclp * p[i] + sclq * q[i];
         }
@@ -603,7 +614,7 @@ void QuaternionSlerpNoAlign(const Quaternion &p, const Quaternion &q, float t, Q
         qt[3] = q[2];
         sclp  = sin((1.0f - t) * (0.5f * M_PI));
         sclq  = sin(t * (0.5f * M_PI));
-        for (i = 0; i < 3; ++i)
+        for (i = 0; i < 3; i++)
         {
             qt[i] = sclp * p[i] + sclq * qt[i];
         }
@@ -614,9 +625,9 @@ void QuaternionSlerpNoAlign(const Quaternion &p, const Quaternion &q, float t, Q
 
 const studiohdr_t *virtualgroup_t::GetStudioHdr(void) const
 {
-    return g_IMDLCache->GetStudioHdr((MDLHandle_t) (uintptr_t) cache & 0xffff);
+    return g_IMDLCache->GetStudioHdr((MDLHandle_t)(uintptr_t) cache & 0xffff);
 }
 int studiohdr_t::GetAutoplayList(unsigned short **pOut) const
 {
-    return g_IMDLCache->GetAutoplayList((MDLHandle_t) (uintptr_t) virtualModel & 0xffff, pOut);
+    return g_IMDLCache->GetAutoplayList((MDLHandle_t)(uintptr_t) virtualModel & 0xffff, pOut);
 }

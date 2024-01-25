@@ -1,3 +1,4 @@
+
 //#include <GL/glew.h>
 #include "visual/imgui/imgui_impl.h"
 #include "visual/drawing.hpp"
@@ -78,7 +79,7 @@ void ImGui_Impl_Render(ImDrawData *draw_data)
                                                      // are often (2,2)
 
     // Render command lists
-    for (int n = 0; n < draw_data->CmdListsCount; ++n)
+    for (int n = 0; n < draw_data->CmdListsCount; n++)
     {
         const ImDrawList *cmd_list   = draw_data->CmdLists[n];
         const ImDrawVert *vtx_buffer = cmd_list->VtxBuffer.Data;
@@ -110,7 +111,7 @@ void ImGui_Impl_Render(ImDrawData *draw_data)
                     glScissor((int) clip_rect.x, (int) (fb_height - clip_rect.w), (int) (clip_rect.z - clip_rect.x), (int) (clip_rect.w - clip_rect.y));
 
                     // Bind texture, Draw
-                    glBindTexture(GL_TEXTURE_2D, (GLuint) (intptr_t) pcmd->TextureId);
+                    glBindTexture(GL_TEXTURE_2D, (GLuint)(intptr_t) pcmd->TextureId);
                     glDrawElements(GL_TRIANGLES, (GLsizei) pcmd->ElemCount, GL_UNSIGNED_INT, idx_buffer);
                 }
             }
@@ -197,8 +198,6 @@ bool ImGui_ImplSdl_ProcessEvent(SDL_Event *event)
 
 bool ImGui_Impl_CreateFontsTexture(ImFontAtlas *font)
 {
-    // Build texture atlas
-    ImGuiIO &io = ImGui::GetIO();
     unsigned char *pixels;
     int width, height;
     font->GetTexDataAsRGBA32(&pixels, &width,

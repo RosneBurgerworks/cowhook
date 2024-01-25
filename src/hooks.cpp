@@ -1,3 +1,10 @@
+/*
+ * hooks.cpp
+ *
+ *  Created on: Oct 4, 2016
+ *      Author: nullifiedcat
+ */
+
 #include "common.hpp"
 
 #include <stdlib.h>
@@ -9,7 +16,7 @@ namespace hooks
 unsigned CountMethods(method_table_t table)
 {
     unsigned int i = 0;
-    while (table[++i])
+    while (table[i++])
         ;
     return i;
 }

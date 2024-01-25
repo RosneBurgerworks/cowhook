@@ -5,6 +5,10 @@
 
 #include "HookedMethods.hpp"
 
+namespace hacks::tf2::killstreak
+{
+extern void fire_event(IGameEvent *event);
+}
 namespace hooked_methods
 {
 
@@ -12,6 +16,7 @@ namespace hooked_methods
 // TODO: maybe remove?
 DEFINE_HOOKED_METHOD(FireEvent, bool, IGameEventManager2 *this_, IGameEvent *event, bool no_broadcast)
 {
+    // hacks::tf2::killstreak::fire_event(event);
     return original::FireEvent(this_, event, no_broadcast);
 }
 } // namespace hooked_methods

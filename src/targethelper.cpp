@@ -6,7 +6,7 @@
  */
 
 #include "common.hpp"
-#include "hacks/Aimbot.hpp"
+#include "hacks/Backtrack.hpp"
 
 /*
  * Targeting priorities:
@@ -20,11 +20,15 @@
 /* Assuming given entity is a valid target range 0 to 100 */
 int GetScoreForEntity(CachedEntity *entity)
 {
+    if (!entity)
+        return 0;
+
     if (entity->m_Type() == ENTITY_BUILDING)
     {
         if (entity->m_iClassID() == CL_CLASS(CObjectSentrygun))
         {
             bool is_strong_class = g_pLocalPlayer->clazz == tf_heavy || g_pLocalPlayer->clazz == tf_soldier;
+
             if (is_strong_class)
             {
                 float distance = (g_pLocalPlayer->v_Origin - entity->m_vecOrigin()).Length();
@@ -38,10 +42,9 @@ int GetScoreForEntity(CachedEntity *entity)
         }
         return 0;
     }
-
     int clazz      = CE_INT(entity, netvar.iClass);
-    int health     = entity->m_iHealth();
-    float distance = entity->m_flDistance();
+    int health     = CE_INT(entity, netvar.iHealth);
+    float distance = (g_pLocalPlayer->v_Origin - entity->m_vecOrigin()).Length();
     bool zoomed    = HasCondition<TFCond_Zoomed>(entity);
     bool pbullet   = HasCondition<TFCond_SmallBulletResist>(entity);
     bool special   = false;
@@ -52,7 +55,9 @@ int GetScoreForEntity(CachedEntity *entity)
     case tf_sniper:
         total += 25;
         if (zoomed)
+        {
             total += 50;
+        }
         special = true;
         break;
     case tf_medic:
@@ -62,45 +67,45 @@ int GetScoreForEntity(CachedEntity *entity)
         break;
     case tf_spy:
         total += 20;
-        if (distance < 400.0f)
+        if (distance < 400)
             total += 60;
         special = true;
         break;
     case tf_soldier:
         if (HasCondition<TFCond_BlastJumping>(entity))
             total += 30;
-    default:
         break;
     }
-
     if (!special)
     {
         if (pbullet)
+        {
             total += 50;
-
+        }
         if (kritz)
+        {
             total += 99;
-
+        }
         if (distance != 0)
         {
-            int distance_factor = static_cast<int>(4096.0f / distance * 4.0f);
+            int distance_factor = (4096 / distance) * 4;
             total += distance_factor;
             if (health != 0)
             {
-                int health_factor = 450 / health * 4;
+                int health_factor = (450 / health) * 4;
                 if (health_factor > 30)
                     health_factor = 30;
                 total += health_factor;
             }
         }
     }
-
     if (total > 99)
         total = 99;
-    auto player_state = entity->player_info ? playerlist::AccessData(entity->player_info->friendsID).state : playerlist::k_EState::DEFAULT;
-    if (player_state == playerlist::k_EState::ABUSE || player_state == playerlist::k_EState::RAGE)
+    if (playerlist::AccessData(entity).state == playerlist::k_EState::RAGE)
         total = 999;
-    if (TFGameRules()->IsMannVsMachineMode() && clazz == tf_medic)
+    if (IsSentryBuster(entity))
+        total = 0;
+    if (clazz == tf_medic && g_pGameRules->isPVEMode)
         total = 999;
     return total;
 }

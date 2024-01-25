@@ -9,6 +9,7 @@
 
 #include <entitycache.hpp>
 #include "core/netvars.hpp"
+#include "gameinfo.hpp"
 
 // So, tf2 actually stores cond netvars sequentionally, that's pretty good.
 // This struct is just used for easy access to 128bit set, you shouldn't make an
@@ -167,15 +168,21 @@ template <typename... ConditionList> constexpr condition_data_s CreateConditionM
     for (const auto &cond : { conds... })
     {
         if (cond >= 32 * 3)
+        {
             c3 |= (1u << (cond % 32));
-
+        }
         if (cond >= 32 * 2)
+        {
             c2 |= (1u << (cond % 32));
-
+        }
         if (cond >= 32 * 1)
+        {
             c1 |= (1u << (cond % 32));
+        }
         else
+        {
             c0 |= (1u << (cond));
+        }
     }
     return condition_data_s{ c0, c1, c2, c3 };
 }
@@ -188,7 +195,6 @@ constexpr condition_data_s KDisguisedMask    = CreateConditionMask(TFCond_Disgui
 constexpr condition_data_s KVisibilityMask      = CreateConditionMask(TFCond_OnFire, TFCond_Jarated, TFCond_CloakFlicker, TFCond_Milked, TFCond_Bleeding);
 constexpr condition_data_s KInvulnerabilityMask = CreateConditionMask(TFCond_Ubercharged, TFCond_UberchargedCanteen, TFCond_UberchargedHidden, TFCond_UberchargedOnTakeDamage, TFCond_Bonked, TFCond_DefenseBuffMmmph);
 constexpr condition_data_s KCritBoostMask       = CreateConditionMask(TFCond_Kritzkrieged, TFCond_CritRuneTemp, TFCond_CritCanteen, TFCond_CritMmmph, TFCond_CritOnKill, TFCond_CritOnDamage, TFCond_CritOnFirstBlood, TFCond_CritOnWin, TFCond_CritRuneTemp, TFCond_HalloweenCritCandy);
-constexpr condition_data_s KMiniCritBoostMask   = CreateConditionMask(TFCond_Buffed, TFCond_CritCola, TFCond_NoHealingDamageBuff, TFCond_MiniCritOnKill);
 
 // Compiler will optimize this to extremely small functions I guess.
 // These functions are never used with dynamic "cond" value anyways.
@@ -196,15 +202,22 @@ constexpr condition_data_s KMiniCritBoostMask   = CreateConditionMask(TFCond_Buf
 template <condition cond> inline bool CondBitCheck(condition_data_s &data)
 {
     if (cond >= 32 * 3)
+    {
         return data.cond_3 & (1u << (cond % 32));
-
+    }
     if (cond >= 32 * 2)
+    {
         return data.cond_2 & (1u << (cond % 32));
-
-    if (cond >= 32)
+    }
+    if (cond >= 32 * 1)
+    {
         return data.cond_1 & (1u << (cond % 32));
-
-    return data.cond_0 & (1u << (cond));
+    }
+    if (cond < 32)
+    {
+        return data.cond_0 & (1u << (cond));
+    }
+    return false;
 }
 
 // I haven't figured out how to pass a struct as a parameter, sorry.
@@ -215,8 +228,12 @@ template <uint32_t c0, uint32_t c1, uint32_t c2, uint32_t c3> inline bool CondMa
 
 template <uint32_t c0, uint32_t c1, uint32_t c2, uint32_t c3> inline bool HasConditionMask(CachedEntity *ent)
 {
-    if (CondMaskCheck<c0, c1, c2, c3>(CE_VAR(ent, netvar._condition_bits, condition_data_s)))
-        return true;
+    IF_GAME(!IsTF()) return false;
+    IF_GAME(IsTF2())
+    {
+        if (CondMaskCheck<c0, c1, c2, c3>(CE_VAR(ent, netvar._condition_bits, condition_data_s)))
+            return true;
+    }
     return CondMaskCheck<c0, c1, c2, c3>(CE_VAR(ent, netvar.iCond, condition_data_s));
 }
 
@@ -225,43 +242,70 @@ template <condition cond, bool state> inline void CondBitSet(condition_data_s &d
     if (state)
     {
         if (cond > 32 * 3)
+        {
             data.cond_3 |= (1u << (cond % 32));
+        }
         else if (cond > 32 * 2)
+        {
             data.cond_2 |= (1u << (cond % 32));
+        }
         else if (cond > 32 * 1)
+        {
             data.cond_1 |= (1u << (cond % 32));
+        }
         else
+        {
             data.cond_0 |= (1u << (cond));
+        }
     }
     else
     {
         if (cond > 32 * 3)
+        {
             data.cond_3 &= ~(1u << (cond % 32));
+        }
         else if (cond > 32 * 2)
+        {
             data.cond_2 &= ~(1u << (cond % 32));
+        }
         else if (cond > 32 * 1)
+        {
             data.cond_1 &= ~(1u << (cond % 32));
+        }
         else
+        {
             data.cond_0 &= ~(1u << (cond));
+        }
     }
 }
 
 template <condition cond> inline bool HasCondition(CachedEntity *ent)
 {
-    if (cond < condition(96) && CondBitCheck<cond>(CE_VAR(ent, netvar._condition_bits, condition_data_s)))
-        return true;
-
+    IF_GAME(!IsTF()) return false;
+    IF_GAME(IsTF2() && cond < condition(96))
+    {
+        if (CondBitCheck<cond>(CE_VAR(ent, netvar._condition_bits, condition_data_s)))
+            return true;
+    }
     return CondBitCheck<cond>(CE_VAR(ent, netvar.iCond, condition_data_s));
 }
 
 template <condition cond> inline void AddCondition(CachedEntity *ent)
 {
-    CondBitSet<cond, true>(CE_VAR(ent, netvar._condition_bits, condition_data_s));
+    IF_GAME(!IsTF()) return;
+    IF_GAME(IsTF2())
+    {
+        CondBitSet<cond, true>(CE_VAR(ent, netvar._condition_bits, condition_data_s));
+    }
     CondBitSet<cond, true>(CE_VAR(ent, netvar.iCond, condition_data_s));
 }
 
 template <condition cond> inline void RemoveCondition(CachedEntity *ent)
 {
-    CondBitSet<cond, false>(CE_VAR(ent, netvar._condition_bits, condition_data_s));
+    IF_GAME(!IsTF()) return;
+    IF_GAME(IsTF2())
+    {
+        CondBitSet<cond, false>(CE_VAR(ent, netvar._condition_bits, condition_data_s));
+    }
     CondBitSet<cond, false>(CE_VAR(ent, netvar.iCond, condition_data_s));
 }

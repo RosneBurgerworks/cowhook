@@ -19,6 +19,7 @@ constexpr int CACHE_MAX_HITBOXES = 64;
 
 namespace hitbox_cache
 {
+
 struct CachedHitbox
 {
     Vector min;
@@ -30,12 +31,12 @@ struct CachedHitbox
 class EntityHitboxCache
 {
 private:
-    int hit_idx{};
+    int hit_idx;
     bool m_bModelSet      = false;
     bool m_bInit          = false;
     bool m_bSuccess       = false;
     model_t *m_pLastModel = nullptr;
-    CachedEntity *parent_ref{};
+    CachedEntity *parent_ref;
 
     uint_fast64_t m_VisCheckValidationFlags = 0;
     uint_fast64_t m_VisCheck                = 0;
@@ -43,7 +44,7 @@ private:
 
 public:
     EntityHitboxCache() = default;
-    explicit EntityHitboxCache(int in_IDX) : hit_idx(in_IDX)
+    EntityHitboxCache(int in_IDX) : hit_idx(in_IDX)
     {
     }
 
@@ -66,12 +67,10 @@ public:
             return 0;
         return m_nNumHitboxes;
     }
-
     matrix3x4_t *GetBones(int numbones = -1);
 
     // for "fixing" bones to use the reconstructed ones
     void UpdateBones();
-
     int m_nNumHitboxes = 0;
     std::vector<CachedHitbox> m_CacheInternal;
 

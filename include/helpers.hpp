@@ -1,5 +1,5 @@
 /*
- * helpers.hpp
+ * helpers.h
  *
  *  Created on: Oct 8, 2016
  *      Author: nullifiedcat
@@ -19,7 +19,9 @@ class Vector;
 class ICvar;
 void SetCVarInterface(ICvar *iface);
 
-constexpr float RADPI = 180.0f / M_PI_F;
+constexpr float PI    = 3.14159265358979323846f;
+constexpr float RADPI = 57.295779513082f;
+// #define DEG2RAD(x) (float)(x) * (float)(PI / 180.0f)
 
 #include <enums.hpp>
 #include <conditions.hpp>
@@ -40,7 +42,8 @@ constexpr float RADPI = 180.0f / M_PI_F;
 #define TIME_TO_TICKS(dt) ((int) (0.5f + (float) (dt) / TICK_INTERVAL))
 #define TICKS_TO_TIME(t) (TICK_INTERVAL * (t))
 #define ROUND_TO_TICKS(t) (TICK_INTERVAL * TIME_TO_TICKS(t))
-#define SERVER_TIME (TICK_INTERVAL * CE_INT(LOCAL_E, netvar.nTickBase))
+
+// typedef void ( *FnCommandCallback_t )( const CCommand &command );
 
 template <typename Iter, typename RandomGenerator> Iter select_randomly(Iter start, Iter end, RandomGenerator &g)
 {
@@ -64,12 +67,12 @@ std::vector<ConCommand *> &RegisteredCommandsList();
 void BeginConVars();
 void EndConVars();
 
-// Calling source engine functions would get me more accurate result at cost of speed, so idk.
+// Calling source engine functions would get me more accurate result at cost of
+// speed, so idk.
 // TODO?
 
 bool IsPlayerInvulnerable(CachedEntity *player);
 bool IsPlayerCritBoosted(CachedEntity *player);
-bool IsPlayerMiniCritBoosted(CachedEntity *player);
 bool IsPlayerInvisible(CachedEntity *player);
 bool IsPlayerDisguised(CachedEntity *player);
 bool IsPlayerResistantToCurrentWeapon(CachedEntity *player);
@@ -86,15 +89,11 @@ powerup_type GetPowerupOnPlayer(CachedEntity *player);
 // It's better if it won't create a new object each time it gets called.
 // So it returns a success state, and the values are stored in out reference.
 bool GetHitbox(CachedEntity *entity, int hb, Vector &out);
-inline weaponmode GetWeaponMode()
-{
-    return g_pLocalPlayer->weapon_mode;
-}
+weaponmode GetWeaponMode();
 weaponmode GetWeaponMode(CachedEntity *ent);
 
 void FixMovement(CUserCmd &cmd, Vector &viewangles);
 void VectorAngles(Vector &forward, Vector &angles);
-
 // Get forward vector
 inline void AngleVectors2(const QAngle &angles, Vector *forward)
 {
@@ -107,7 +106,6 @@ inline void AngleVectors2(const QAngle &angles, Vector *forward)
     forward->y = cp * sy;
     forward->z = -sp;
 }
-
 void AngleVectors3(const QAngle &angles, Vector *forward, Vector *right, Vector *up);
 bool isRapidFire(IClientEntity *wep);
 void fClampAngle(Vector &qaAng);
@@ -115,7 +113,7 @@ void fClampAngle(Vector &qaAng);
 inline Vector GetAimAtAngles(Vector origin, Vector target, CachedEntity *punch_correct = nullptr)
 {
     Vector angles, tr;
-    tr = target - origin;
+    tr = (target - origin);
     VectorAngles(tr, angles);
     // Apply punchangle correction
     if (punch_correct)
@@ -123,7 +121,7 @@ inline Vector GetAimAtAngles(Vector origin, Vector target, CachedEntity *punch_c
     fClampAngle(angles);
     return angles;
 }
-
+extern std::mutex trace_lock;
 bool IsEntityVisible(CachedEntity *entity, int hb);
 bool IsEntityVectorVisible(CachedEntity *entity, Vector endpos, bool use_weapon_offset = false, unsigned int mask = MASK_SHOT_HULL, trace_t *trace = nullptr, bool hit = false);
 bool VisCheckEntFromEnt(CachedEntity *startEnt, CachedEntity *endEnt);
@@ -137,14 +135,17 @@ bool canReachVector(Vector loc, Vector dest = { 0, 0, 0 });
 bool LineIntersectsBox(Vector &bmin, Vector &bmax, Vector &lmin, Vector &lmax);
 void GenerateBoxVertices(const Vector &vOrigin, const QAngle &angles, const Vector &vMins, const Vector &vMaxs, Vector pVerts[8]);
 
+float DistToSqr(CachedEntity *entity);
+
 // const char* MakeInfoString(IClientEntity* player);
 bool GetProjectileData(CachedEntity *weapon, float &speed, float &gravity, float &start_velocity);
 bool IsVectorVisible(Vector a, Vector b, bool enviroment_only = false, CachedEntity *self = LOCAL_E, unsigned int mask = MASK_SHOT_HULL);
 // A Special function for navparser to check if a Vector is visible.
 bool IsVectorVisibleNavigation(Vector a, Vector b, unsigned int mask = MASK_SHOT_HULL);
 float ProjGravMult(int class_id, float x_speed);
-bool DidProjectileHit(Vector start_point, Vector end_point, CachedEntity *entity, float projectile_size, bool grav_comp, trace_t *tracer = nullptr);
+bool didProjectileHit(Vector start_point, Vector end_point, CachedEntity *entity, float projectile_size, bool grav_comp, trace_t *tracer = nullptr);
 Vector getShootPos(Vector angle);
+bool is_rocket(int);
 Vector GetForwardVector(Vector origin, Vector viewangles, float distance, CachedEntity *punch_entity = nullptr);
 Vector GetForwardVector(float distance, CachedEntity *punch_entity = nullptr);
 CachedEntity *getClosestEntity(Vector vec);
@@ -157,34 +158,27 @@ bool HasWeapon(CachedEntity *ent, int wantedId);
 bool IsAmbassador(CachedEntity *ent);
 bool AmbassadorCanHeadshot();
 // Validate a UserCmd
-constexpr unsigned char VERIFIED_CMD_SIZE = 90;
+#define VERIFIED_CMD_SIZE 90
 void ValidateUserCmd(CUserCmd *cmd, int sequence_nr);
 
 // Convert a TF2 handle into an IDX -> ENTITY(IDX)
-FORCEINLINE int HandleToIDX(int handle)
-{
-    return handle & 0xFFFF;
-}
+#define HandleToIDX(handle) (handle & 0xFFFF)
 
 inline const char *teamname(int team)
 {
-    switch (team)
-    {
-    case 2:
+    if (team == 2)
         return "RED";
-    case 3:
+    else if (team == 3)
         return "BLU";
-    default:
-        return "SPEC";
-    }
+    return "SPEC";
 }
-
 extern const std::string classes[10];
 inline const char *classname(int clazz)
 {
     if (clazz > 0 && clazz < 10)
+    {
         return classes[clazz - 1].c_str();
-
+    }
     return "Unknown";
 }
 
@@ -192,6 +186,7 @@ void PrintChat(const char *fmt, ...);
 void ChangeName(std::string name);
 
 void WhatIAmLookingAt(int *result_eindex, Vector *result_pos);
+
 void AimAt(Vector origin, Vector target, CUserCmd *cmd, bool compensate_punch = true);
 void FastStop();
 void AimAtHitbox(CachedEntity *ent, int hitbox, CUserCmd *cmd, bool compensate_punch = true);
@@ -215,12 +210,16 @@ char GetChar(ButtonCode_t button);
 
 bool IsEntityVisiblePenetration(CachedEntity *entity, int hb);
 
+// void RunEnginePrediction(IClientEntity* ent, CUserCmd *ucmd = NULL);
+// void StartPrediction(CUserCmd* cmd);
+// void EndPrediction();
+
 float RandFloatRange(float min, float max);
 int UniformRandomInt(int min, int max);
 
-Vector CalcAngle(const Vector &src, const Vector &dst);
-void MakeVector(const Vector &angle, Vector &vector);
-float GetFov(const Vector &angle, const Vector &src, const Vector &dst);
+Vector CalcAngle(Vector src, Vector dst);
+void MakeVector(Vector ang, Vector &out);
+float GetFov(Vector ang, Vector src, Vector dst);
 
 void ReplaceString(std::string &input, const std::string &what, const std::string &with_what);
 void ReplaceSpecials(std::string &input);
@@ -241,7 +240,6 @@ template <typename T, typename... Targs> void format_internal(std::stringstream 
     stream << value;
     format_internal(stream, args...);
 }
-
 template <typename... Args> std::string format(const Args &...args)
 {
     std::stringstream stream;
@@ -249,7 +247,11 @@ template <typename... Args> std::string format(const Args &...args)
     return stream.str();
 }
 
+extern const std::string classes[10];
 extern const char *powerups[POWERUP_COUNT];
+bool isTruce();
+
+void setTruce(bool status);
 int GetPlayerForUserID(int userID);
 
 inline bool GetPlayerInfo(int idx, player_info_s *info)
@@ -263,7 +265,7 @@ inline bool GetPlayerInfo(int idx, player_info_s *info)
     {
         std::string guid = info->guid;
         guid             = guid.substr(5, guid.length() - 6);
-        info->friendsID  = std::stoul(guid);
+        info->friendsID  = std::stoul(guid.c_str());
     }
     catch (...)
     {

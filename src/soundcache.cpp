@@ -1,11 +1,14 @@
 #include "common.hpp"
 #include "soundcache.hpp"
 
+
+
 namespace soundcache
 {
 constexpr unsigned int EXPIRETIME = 10000;
 
-std::unordered_map<int, SoundStruct> sound_cache;
+
+boost::unordered_flat_map<int, SoundStruct> sound_cache;
 static void CreateMove()
 {
     if (CE_BAD(LOCAL_E))
@@ -15,16 +18,14 @@ static void CreateMove()
     for (const auto &i : sound_list)
         cache_sound(i.m_pOrigin, i.m_nSoundSource);
 
-    for (const auto &[key,val]: sound_cache)
-        if (val.last_update.check(EXPIRETIME) || (key <= g_GlobalVars->maxClients && !g_pPlayerResource->IsAlive(key)))
+    for (auto const &[key,val]: sound_cache)
+        if (val.last_update.check(EXPIRETIME) || (key <= g_IEngine->GetMaxClients() && !g_pPlayerResource->isAlive(key)))
             sound_cache.erase(key);
 }
 
-static InitRoutine init(
-    []()
-    {
-        EC::Register(EC::CreateMove, CreateMove, "CM_SoundCache");
-        EC::Register(
-            EC::LevelInit, []() { sound_cache.clear(); }, "soundcache_levelinit");
-    });
+static InitRoutine init([]() {
+    EC::Register(EC::CreateMove, CreateMove, "CM_SoundCache");
+    EC::Register(
+        EC::LevelInit, []() { sound_cache.clear(); }, "soundcache_levelinit");
+});
 } // namespace soundcache

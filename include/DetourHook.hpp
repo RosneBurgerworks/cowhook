@@ -10,16 +10,18 @@
 
 #include "bytepatch.hpp"
 
-#define foffset(p, i) ((uint8_t *) &p)[i]
+#define foffset(p, i) ((unsigned char *) &p)[i]
 
 class DetourHook
 {
-    uintptr_t original_address{};
+    uintptr_t original_address;
     std::unique_ptr<BytePatch> patch;
-    void *hook_fn{};
+    void *hook_fn;
 
 public:
-    DetourHook() = default;
+    DetourHook()
+    {
+    }
 
     DetourHook(uintptr_t original, void *hook_func)
     {
@@ -30,21 +32,21 @@ public:
     {
         original_address   = original;
         hook_fn            = hook_func;
-        uintptr_t rel_addr = reinterpret_cast<uintptr_t>(hook_func) - original_address - 5;
-        patch = std::make_unique<BytePatch>(original, std::vector<uint8_t> { 0xE9, foffset(rel_addr, 0), foffset(rel_addr, 1), foffset(rel_addr, 2), foffset(rel_addr, 3) });
+        uintptr_t rel_addr = ((uintptr_t) hook_func - ((uintptr_t) original_address)) - 5;
+        patch.reset(new BytePatch(original, { 0xE9, foffset(rel_addr, 0), foffset(rel_addr, 1), foffset(rel_addr, 2), foffset(rel_addr, 3) }));
         InitBytepatch();
     }
 
     void InitBytepatch()
     {
         if (patch)
-            patch->Patch();
+            (*patch).Patch();
     }
 
     void Shutdown()
     {
         if (patch)
-            patch->Shutdown();
+            (*patch).Shutdown();
     }
 
     ~DetourHook()
@@ -58,8 +60,8 @@ public:
         if (patch)
         {
             // Unpatch
-            patch->Shutdown();
-            return reinterpret_cast<void *>(original_address);
+            (*patch).Shutdown();
+            return (void *) original_address;
         }
         // No patch, no func.
         return nullptr;

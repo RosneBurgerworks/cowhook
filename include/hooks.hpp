@@ -7,14 +7,15 @@
 
 #pragma once
 
-// Parts of copy-pasted code
+// Parts of copypasted code
 // Credits: Casual_Hacker
 
-#include <cstdint>
-#include <cstddef>
+#include <stdint.h>
+#include <stddef.h>
 
 namespace hooks
 {
+
 typedef void *ptr_t;
 typedef void *method_t;
 typedef method_t *method_table_t;
@@ -74,6 +75,5 @@ extern VMTHook materialsystem;
 extern VMTHook enginevgui;
 extern VMTHook vstd;
 extern VMTHook eventmanager2;
-extern VMTHook cmdclientunrestricted;
 extern VMTHook toolbox;
 } // namespace hooks

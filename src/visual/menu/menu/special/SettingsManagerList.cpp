@@ -7,6 +7,7 @@
 #include <sstream>
 #include <menu/special/VariableListEntry.hpp>
 #include <menu/special/TreeListCollapsible.hpp>
+#include <menu/menu/special/SettingsManagerList.hpp>
 
 zerokernel::special::SettingsManagerList::SettingsManagerList(zerokernel::Container &list) : list(list)
 {
@@ -109,7 +110,7 @@ void zerokernel::special::SettingsManagerList::addCollapsible(std::string name, 
     list.addObject(std::move(entry));
 }
 
-static std::unordered_map<std::string, bool> marks{};
+static boost::unordered_flat_map<std::string, bool> marks{};
 
 void zerokernel::special::SettingsManagerList::markVariable(std::string name)
 {

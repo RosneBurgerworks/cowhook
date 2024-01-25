@@ -106,7 +106,7 @@ void LogMessage(int eid, std::string message)
         return;
     if (message.empty())
         return;
-    if (no_spam && hacks::spam::isActive() && eid == g_IEngine->GetLocalPlayer())
+    if (no_spam && hacks::shared::spam::isActive() && eid == g_IEngine->GetLocalPlayer())
         return;
     player_info_s info{};
     if (!GetPlayerInfo(eid, &info))

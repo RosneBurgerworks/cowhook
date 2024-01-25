@@ -11,6 +11,7 @@
 
 namespace re
 {
+
 class C_TFWeaponBaseGun : public C_TFWeaponBase
 {
 public:

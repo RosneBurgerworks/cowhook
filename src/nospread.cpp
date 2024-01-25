@@ -1,5 +1,25 @@
-#include "common.hpp"
-#include "crits.hpp"
+// To anyone reading this and planning to add it to their own cheat,
+// It would be nice if you could credit us, the Nullworks/Cathook team.
+// Thanks :)
+
+/*
+* Cathook
+* Copyright (C) 2020  nullworks
+
+* This program is free software: you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+
+* You should have received a copy of the GNU General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include "DetourHook.hpp"
 #include <regex>
 #include <boost/algorithm/string.hpp>
@@ -8,23 +28,55 @@
 #include "AntiAim.hpp"
 #include "WeaponData.hpp"
 
-namespace hacks::nospread
+namespace hacks::tf2::nospread
 {
+static settings::Boolean projectile("nospread.projectile", "false");
+/*
+ * 0 Always on
+ * 1 Disable if being spectated in first person
+ * 2 Disable if being spectated
+ */
+static settings::Int specmode("nospread.spectator-mode", "1");
 settings::Boolean bullet("nospread.bullet", "false");
 settings::Int debug_nospread("nospread.debug", "0");
 settings::Boolean center_cone{ "nospread.center-cone", "true" };
-settings::Boolean draw{ "nospread.draw-info", "false" };
+settings::Boolean draw{ "nospread.draw-info", "true" };
 settings::Boolean draw_mantissa{ "nospread.draw-info.mantissa", "false" };
 settings::Boolean correct_ping{ "nospread.correct-ping", "true" };
 settings::Boolean use_avg_latency{ "nospread.use-average-latency", "false" };
 settings::Boolean extreme_accuracy{ "nospread.use-extreme-accuracy", "false" };
-static bool should_nospread = false;
-bool is_syncing             = false;
+bool is_syncing = false;
+
+bool shouldNoSpread(bool _projectile)
+{
+    switch (*specmode)
+    {
+    // Always on
+    default:
+    case 0:
+        break;
+    // Disable if being spectated in first person
+    case 1:
+        if (g_pLocalPlayer->spectator_state == g_pLocalPlayer->FIRSTPERSON)
+            return false;
+        break;
+    // Disable if being spectated
+    case 2:
+        if (g_pLocalPlayer->spectator_state != g_pLocalPlayer->NONE)
+            return false;
+    };
+    return _projectile ? *projectile : *bullet;
+}
 
 static void CreateMove()
 {
     if (CE_BAD(LOCAL_E) || CE_BAD(LOCAL_W))
         return;
+
+    if (!shouldNoSpread(true))
+        return;
+
+    // Credits to https://www.unknowncheats.me/forum/team-fortress-2-a/139094-projectile-nospread.html
 
     // Set up Random Seed
     int cmd_num = current_late_user_cmd->command_number;
@@ -33,9 +85,70 @@ static void CreateMove()
     for (int i = 0; i < 6; ++i)
         RandomFloat();
 
-    // Rest of weapons
-    if (!(current_late_user_cmd->buttons & IN_ATTACK))
+    // Projectile/Huntsman check
+    if (g_pLocalPlayer->weapon_mode != weapon_projectile && LOCAL_W->m_iClassID() != CL_CLASS(CTFCompoundBow))
         return;
+
+    // Beggars check
+    if (CE_INT(LOCAL_W, netvar.iItemDefinitionIndex) == 730)
+    {
+        // Player has 0 loaded rockets and reload mode is not 2 (reloading and ready to release)
+        bool no_loaded_rockets = CE_INT(LOCAL_W, netvar.m_iClip1) == 0 && CE_INT(LOCAL_W, netvar.iReloadMode) != 2;
+        // Player is attacking and reload is not 0 (not reloading)
+        bool loading_rockets = current_late_user_cmd->buttons & IN_ATTACK && CE_INT(LOCAL_W, netvar.iReloadMode) != 0;
+        if (no_loaded_rockets || loading_rockets)
+            return;
+    }
+    // Huntsman check
+    else if (LOCAL_W->m_iClassID() == CL_CLASS(CTFCompoundBow))
+    {
+        if (current_late_user_cmd->buttons & IN_ATTACK || CE_FLOAT(LOCAL_W, netvar.flChargeBeginTime) == 0)
+            return;
+    }
+    // Rest of weapons
+    else if (!(current_late_user_cmd->buttons & IN_ATTACK))
+        return;
+
+    switch (LOCAL_W->m_iClassID())
+    {
+    case CL_CLASS(CTFSyringeGun):
+    {
+        if (g_pLocalPlayer->v_OrigViewangles == current_late_user_cmd->viewangles)
+            g_pLocalPlayer->bUseSilentAngles = true;
+        float spread = 1.5f;
+        current_late_user_cmd->viewangles.x -= RandomFloat(-spread, spread);
+        current_late_user_cmd->viewangles.y -= RandomFloat(-spread, spread);
+        fClampAngle(current_late_user_cmd->viewangles);
+        break;
+    }
+    case CL_CLASS(CTFCompoundBow):
+    {
+        Vector view = re::C_BasePlayer::GetLocalEyeAngles(RAW_ENT(LOCAL_E));
+        if (g_pLocalPlayer->v_OrigViewangles == current_late_user_cmd->viewangles)
+            g_pLocalPlayer->bUseSilentAngles = true;
+
+        Vector spread;
+        Vector src;
+
+        re::C_TFWeaponBase::GetProjectileFireSetupHuntsman(RAW_ENT(LOCAL_W), RAW_ENT(LOCAL_E), Vector(23.5f, -8.f, 8.f), &src, &spread, false, 2000.0f);
+
+        spread -= view;
+        current_late_user_cmd->viewangles -= spread;
+        fClampAngle(current_late_user_cmd->viewangles);
+        break;
+    }
+    default:
+        Vector view = re::C_BasePlayer::GetLocalEyeAngles(RAW_ENT(LOCAL_E));
+        if (g_pLocalPlayer->v_OrigViewangles == current_late_user_cmd->viewangles)
+            g_pLocalPlayer->bUseSilentAngles = true;
+
+        Vector spread = re::C_TFWeaponBase::GetSpreadAngles(RAW_ENT(LOCAL_W));
+
+        spread -= view;
+        current_late_user_cmd->viewangles -= spread;
+        fClampAngle(current_late_user_cmd->viewangles);
+        break;
+    }
 }
 
 static InitRoutine init([]() { EC::Register(EC::CreateMoveLate, CreateMove, "nospread_cm", EC::very_late); });
@@ -80,10 +193,17 @@ static float CalculateMantissaStep(float flValue)
     return powf(2, iExponent - (127 + 23));
 }
 
+float GetServerCurTime()
+{
+    // Calculate on our own accord
+    float server_time = g_GlobalVars->interval_per_tick * CE_INT(LOCAL_E, netvar.nTickBase);
+    return server_time;
+}
+
 // Does the shot have any spread in general?
 bool IsPerfectShot(IClientEntity *weapon, float provided_time = 0.0 /*used for optimization*/)
 {
-    float server_time       = provided_time == 0.0 ? SERVER_TIME : provided_time;
+    float server_time       = provided_time == 0.0 ? GetServerCurTime() : provided_time;
     float time_since_attack = server_time - NET_FLOAT(weapon, netvar.flLastFireTime);
 
     int nBulletsPerShot = GetWeaponData(weapon)->m_nBulletsPerShot;
@@ -123,7 +243,7 @@ void ApplySpreadCorrection(Vector &angles, int seed, float spread)
     std::vector<Vector> bullet_corrections;
     Vector average_spread(0.0f);
 
-    for (int i = 0; i < nBulletsPerShot; ++i)
+    for (int i = 0; i < nBulletsPerShot; i++)
     {
         RandomSeed(seed + i);
         float flX = RandomFloat(-0.5, 0.5) + RandomFloat(-0.5, 0.5);
@@ -324,7 +444,6 @@ bool DispatchUserMessage(bf_read *buf, int type)
     buf->Seek(0);
 
     std::vector<std::string> lines;
-    /* Boost here */
     boost::split(lines, msg_str, boost::is_any_of("\n"), boost::token_compress_on);
 
     // Regex to find the playerperf data we want/need
@@ -468,7 +587,7 @@ void CL_SendMove_hook()
     first_usercmd        = true;
     called_from_sendmove = false;
 
-    if (!no_spread_synced)
+    if (!no_spread_synced || !shouldNoSpread(false))
     {
         CL_SendMove_t original = (CL_SendMove_t) cl_nospread_sendmovedetour.GetOriginalFunc();
         original();
@@ -536,7 +655,7 @@ void CL_SendMove_hook()
 
     if (correct_ping)
         // Ping changed, adjust (Provided we are not fakelagging)
-        if (!(fakelag_amount || (hacks::antiaim::isEnabled() && hacks::antiaim::force_fakelag)) && (int) (ping * 1000.0) != (int) (ping_at_send * 1000.0))
+        if (!(fakelag_amount || (hacks::shared::antiaim::isEnabled() && hacks::shared::antiaim::force_fakelag)) && (int) (ping * 1000.0) != (int) (ping_at_send * 1000.0))
             predicted_time += ping - ping_at_send;
 
     // Check if we need to sync
@@ -576,7 +695,7 @@ void CL_SendMove_hook()
         return;
     }
 
-    float current_time = SERVER_TIME;
+    float current_time = GetServerCurTime();
 
     // Check if we are attacking, if not then no point in adjusting
     if (!current_user_cmd || !(current_user_cmd->buttons & IN_ATTACK))
@@ -640,7 +759,7 @@ void CL_SendMove_hook()
 void WriteUserCmd_hook(bf_write *buf, CUserCmd *to, CUserCmd *from)
 {
     // Called by a demo recorder or we shouldn't compensate it.
-    if ((no_spread_synced != SYNCED && !resync_needed) || current_weapon_spread == 0.0)
+    if ((no_spread_synced != SYNCED && !resync_needed) || !shouldNoSpread(false) || current_weapon_spread == 0.0)
     {
         WriteUserCmd_t original = (WriteUserCmd_t) cl_writeusercmd_detour.GetOriginalFunc();
         original(buf, to, from);
@@ -752,10 +871,12 @@ static InitRoutine init_bulletnospread(
     []()
     {
         // Get our detour hooks running
-        static auto writeusercmd_addr = CSignature::GetClientSignature("55 89 E5 57 56 53 83 EC 2C 8B 45 ? 8B 7D ? 8B 5D ? 89 45 ? 8B 40");
+        static auto writeusercmd_addr = gSignatures.GetClientSignature("55 89 E5 57 56 53 83 EC 2C 8B 45 ? 8B 7D ? 8B 5D ? 89 45 ? 8B 40");
         cl_writeusercmd_detour.Init(writeusercmd_addr, (void *) WriteUserCmd_hook);
-        static auto fx_firebullets_addr = CSignature::GetClientSignature("55 89 E5 57 56 53 81 EC 0C 01 00 00 8B 45 ? 8B 7D ? 89 85");
+        static auto fx_firebullets_addr = gSignatures.GetClientSignature("55 89 E5 57 56 53 81 EC 0C 01 00 00 8B 45 ? 8B 7D ? 89 85");
         fx_firebullets_detour.Init(fx_firebullets_addr, (void *) FX_FireBullets_hook);
+        /*static auto net_sendpacket_addr = gSignatures.GetEngineSignature("55 89 E5 57 56 53 81 EC EC 20 00 00 C7 85 ? ? ? ? 00 00 00 00 8B 45");
+        net_sendpacket_detour.Init(net_sendpacket_addr, (void *) NET_SendPacket_hook);*/
 
         // Register Event callbacks
         EC::Register(EC::CreateMove, CreateMove2, "nospread_createmove2");
@@ -851,4 +972,4 @@ static InitRoutine init_bulletnospread(
             "nospread_shutdown");
     });
 
-} // namespace hacks::nospread
+} // namespace hacks::tf2::nospread

@@ -1,3 +1,6 @@
+/*
+  Created on 29.07.18.
+*/
 #include <menu/GuiInterface.hpp>
 
 #include <menu/menu/Menu.hpp>
@@ -20,9 +23,9 @@ static zerokernel::special::PlayerListData createPlayerListData(int userid)
     auto idx = GetPlayerForUserID(userid);
     player_info_s info{};
     GetPlayerInfo(idx, &info);
-    data.classId = g_pPlayerResource->GetClass(idx);
-    data.teamId  = g_pPlayerResource->GetTeam(idx) - 1;
-    data.dead    = !g_pPlayerResource->IsAlive(idx);
+    data.classId = g_pPlayerResource->getClass(idx);
+    data.teamId  = g_pPlayerResource->getTeam(idx) - 1;
+    data.dead    = !g_pPlayerResource->isAlive(idx);
     data.steam   = info.friendsID;
     data.state   = playerlist::k_pszNames[static_cast<int>(playerlist::AccessData(info.friendsID).state)];
     data.name    = info.name;
@@ -47,7 +50,7 @@ static void initPlayerlist()
             [](unsigned steam, int userid)
             {
                 auto &pl = playerlist::AccessData(steam);
-                for (unsigned i = 0; i < playerlist::k_arrGUIStates.size() - 1; ++i)
+                for (unsigned i = 0; i < playerlist::k_arrGUIStates.size() - 1; i++)
                 {
                     if (pl.state == playerlist::k_arrGUIStates.at(i).first)
                     {
@@ -74,7 +77,7 @@ void sortPList()
         if (GetPlayerInfo(i, &info))
         {
             auto idx = GetPlayerForUserID(info.userID);
-            if (g_pPlayerResource->GetTeam(idx) == 2)
+            if (g_pPlayerResource->getTeam(idx) == 2)
             {
                 controller->addPlayer(info.userID, createPlayerListData(info.userID));
             }
@@ -86,7 +89,7 @@ void sortPList()
         if (GetPlayerInfo(i, &info))
         {
             auto idx = GetPlayerForUserID(info.userID);
-            if (g_pPlayerResource->GetTeam(idx) == 3)
+            if (g_pPlayerResource->getTeam(idx) == 3)
             {
                 controller->addPlayer(info.userID, createPlayerListData(info.userID));
             }
@@ -98,7 +101,7 @@ void sortPList()
         if (GetPlayerInfo(i, &info))
         {
             auto idx = GetPlayerForUserID(info.userID);
-            if (g_pPlayerResource->GetTeam(idx) != 2 && g_pPlayerResource->GetTeam(idx) != 3)
+            if (g_pPlayerResource->getTeam(idx) != 2 && g_pPlayerResource->getTeam(idx) != 3)
             {
                 controller->addPlayer(info.userID, createPlayerListData(info.userID));
             }
@@ -109,19 +112,6 @@ void sortPList()
 class PlayerListEventListener : public IGameEventListener
 {
 public:
-    typedef void (PlayerListEventListener::*EventAction)(KeyValues*, int);
-
-    PlayerListEventListener()
-    {
-        eventActions["player_connect_client"] = &PlayerListEventListener::addPlayer;
-        eventActions["player_disconnect"] = &PlayerListEventListener::removePlayer;
-        eventActions["player_team"] = &PlayerListEventListener::updatePlayerTeam;
-        eventActions["player_changeclass"] = &PlayerListEventListener::updatePlayerClass;
-        eventActions["player_changename"] = &PlayerListEventListener::updatePlayerName;
-        eventActions["player_death"] = &PlayerListEventListener::updatePlayerLifeState;
-        eventActions["player_spawn"] = &PlayerListEventListener::updatePlayerLifeState;
-    }
-
     void FireGameEvent(KeyValues *event) override
     {
         if (!controller)
@@ -132,50 +122,44 @@ public:
             return;
 
         std::string name = event->GetName();
-
-        // Check if the event name is in the map and call the corresponding function
-        if (eventActions.find(name) != eventActions.end()) {
-            (this->*eventActions[name])(event, userid);
+        if (name == "player_connect_client")
+        {
+            logging::Info("addPlayer %d", userid);
             controller->removeAll();
             sortPList();
         }
-    }
-
-private:
-    std::unordered_map<std::string, EventAction> eventActions;
-
-    void addPlayer(KeyValues* event, int userid)
-    {
-        logging::Info("addPlayer %d", userid);
-    }
-
-    void removePlayer(KeyValues* event, int userid)
-    {
-        // logging::Info("removePlayer %d", userid);
-    }
-
-    void updatePlayerTeam(KeyValues* event, int userid)
-    {
-        // logging::Info("updatePlayerTeam %d", userid);
-    }
-
-    void updatePlayerClass(KeyValues* event, int userid)
-    {
-        // logging::Info("updatePlayerClass %d", userid);
-        controller->updatePlayerClass(userid, event->GetInt("class"));
-    }
-
-    void updatePlayerName(KeyValues* event, int userid)
-    {
-        // logging::Info("updatePlayerName %d", userid);
-        controller->updatePlayerName(userid, event->GetString("newname"));
-    }
-
-    void updatePlayerLifeState(KeyValues* event, int userid)
-    {
-        // logging::Info("updatePlayerLifeState %d", userid);
-        bool isDead = (event->GetName() == "player_death");
-        controller->updatePlayerLifeState(userid, isDead);
+        else if (name == "player_disconnect")
+        {
+            // logging::Info("removePlayer %d", userid);
+            controller->removeAll();
+            sortPList();
+        }
+        else if (name == "player_team")
+        {
+            // logging::Info("updatePlayerTeam %d", userid);
+            controller->removeAll();
+            sortPList();
+        }
+        else if (name == "player_changeclass")
+        {
+            // logging::Info("updatePlayerClass %d", userid);
+            controller->updatePlayerClass(userid, event->GetInt("class"));
+        }
+        else if (name == "player_changename")
+        {
+            // logging::Info("updatePlayerName %d", userid);
+            controller->updatePlayerName(userid, event->GetString("newname"));
+        }
+        else if (name == "player_death")
+        {
+            // logging::Info("updatePlayerLifeState %d", userid);
+            controller->updatePlayerLifeState(userid, true);
+        }
+        else if (name == "player_spawn")
+        {
+            // logging::Info("updatePlayerLifeState %d", userid);
+            controller->updatePlayerLifeState(userid, false);
+        }
     }
 };
 

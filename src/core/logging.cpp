@@ -5,7 +5,7 @@
  *      Author: nullifiedcat
  */
 
-#include <cstdarg>
+#include <stdarg.h>
 #include <string>
 
 #include <pwd.h>
@@ -25,17 +25,17 @@ void logging::Initialize()
 {
     // FIXME other method of naming the file?
     static passwd *pwd = getpwuid(getuid());
-    logging::handle.open(strfmt("/tmp/rosnehook-%s-%d.log", pwd->pw_name, getpid()).get(), std::ios::out | std::ios::app);
+    logging::handle.open(strfmt("/tmp/cathook-%s-%d.log", pwd->pw_name, getpid()).get(), std::ios::out | std::ios::app);
 }
 #endif
 
-#if ENABLE_LOGGING
 static inline void Log(const char *result, bool file_only)
 {
+#if ENABLE_LOGGING
     if (!logging::handle.is_open())
         logging::Initialize();
     time_t current_time;
-    struct tm *time_info;
+    struct tm *time_info = nullptr;
     char timeString[10];
     time(&current_time);
     time_info = localtime(&current_time);
@@ -46,11 +46,14 @@ static inline void Log(const char *result, bool file_only)
     logging::handle << to_log;
     logging::handle.flush();
 #if ENABLE_VISUALS
-    if (!hack::shutdown && !file_only && *log_to_console)
-        g_ICvar->ConsoleColorPrintf(MENU_COLOR, "ROSNEHOOK: %s\n", result);
+    if (!hack::shutdown)
+    {
+        if (!file_only && *log_to_console)
+            g_ICvar->ConsoleColorPrintf(MENU_COLOR, "CAT: %s\n", result);
+    }
+#endif
 #endif
 }
-#endif
 
 void logging::Info(const char *fmt, ...)
 {

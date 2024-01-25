@@ -1,5 +1,5 @@
 /*
- * netvars.hpp
+ * entity.h
  *
  *  Created on: Oct 6, 2016
  *      Author: nullifiedcat
@@ -17,7 +17,7 @@ class IClientEntity;
 
 #define NET_FLOAT(entity, offset) NET_VAR(entity, offset, float)
 
-#define NET_BYTE(entity, offset) NET_VAR(entity, offset, uint8)
+#define NET_BYTE(entity, offset) NET_VAR(entity, offset, unsigned char)
 
 #define NET_VECTOR(entity, offset) NET_VAR(entity, offset, Vector)
 
@@ -156,6 +156,7 @@ public:
 
     offset_t hOwner;
     offset_t iWeaponState;
+    offset_t iCritMult; // TF2C
 
     offset_t flChargeLevel;
     offset_t bChargeRelease;

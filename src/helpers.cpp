@@ -6,7 +6,8 @@
  */
 
 #include "common.hpp"
-#include "DetourHook.hpp"
+
+#include <sys/mman.h>
 #include "settings/Bool.hpp"
 #include "MiscTemporary.hpp"
 #include "PlayerTools.hpp"
@@ -27,56 +28,61 @@ std::vector<ConCommand *> &RegisteredCommandsList()
     static std::vector<ConCommand *> list{};
     return list;
 }
+bool is_rocket(int class_id)
+{
+    switch (class_id)
+    {
 
+    case CL_CLASS(CTFRocketLauncher):
+    case CL_CLASS(CTFParticleCannon):
+    case CL_CLASS(CTFRocketLauncher_AirStrike):
+    case CL_CLASS(CTFRocketLauncher_Mortar):
+    case CL_CLASS(CTFRocketLauncher_DirectHit):
+        return true;
+    default:
+        return false;
+    }
+    return false;
+}
 void BeginConVars()
 {
     logging::Info("Begin ConVars");
-    if (!std::ifstream("tf/cfg/betrayals.cfg"))
-    {
-        std::ofstream cfg_betrayals("tf/cfg/betrayals.cfg");
-        cfg_betrayals.close();
-    }
-
     if (!std::ifstream("tf/cfg/cat_autoexec_textmode.cfg"))
     {
         std::ofstream cfg_autoexec_textmode("tf/cfg/cat_autoexec_textmode.cfg", std::ios::out | std::ios::trunc);
         if (cfg_autoexec_textmode.good())
+        {
             cfg_autoexec_textmode << "// Put your custom cathook settings in this "
                                      "file\n// This script will be executed EACH TIME "
                                      "YOU INJECT TEXTMODE CATHOOK\n"
-                                     "sv_cheats 1\n"
+                                     "\n"
                                      "engine_no_focus_sleep 0\n"
                                      "hud_fastswitch 1\n"
                                      "tf_medigun_autoheal 1\n"
-                                     "cat_fixvac\n"
-                                     "fps_max 30\n"
+                                     "fps_max 67\n"
                                      "cat_ipc_connect";
-
-        cfg_autoexec_textmode.close();
+        }
     }
-
     if (!std::ifstream("tf/cfg/cat_autoexec.cfg"))
     {
         std::ofstream cfg_autoexec("tf/cfg/cat_autoexec.cfg", std::ios::out | std::ios::trunc);
         if (cfg_autoexec.good())
+        {
             cfg_autoexec << "// Put your custom cathook settings in this "
                             "file\n// This script will be executed EACH TIME "
                             "YOU INJECT CATHOOK\n";
-
-        cfg_autoexec.close();
+        }
     }
-
     if (!std::ifstream("tf/cfg/cat_matchexec.cfg"))
     {
-        std::ofstream cat_matchexec("tf/cfg/cat_matchexec.cfg", std::ios::out | std::ios::trunc);
-        if (cat_matchexec.good())
-            cat_matchexec << "// Put your custom cathook settings in this "
-                             "file\n// This script will be executed EACH TIME "
-                             "YOU JOIN A MATCH\n";
-
-        cat_matchexec.close();
+        std::ofstream cfg_autoexec("tf/cfg/cat_matchexec.cfg", std::ios::out | std::ios::trunc);
+        if (cfg_autoexec.good())
+        {
+            cfg_autoexec << "// Put your custom cathook settings in this "
+                            "file\n// This script will be executed EACH TIME "
+                            "YOU JOIN A MATCH\n";
+        }
     }
-
     logging::Info(":b:");
     SetCVarInterface(g_ICvar);
 }
@@ -95,15 +101,18 @@ void EndConVars()
                         "make edits to this file\n\n// Every registered "
                         "variable dump\n";
         for (const auto &i : RegisteredVarsList())
+        {
             cfg_defaults << i->GetName() << " \"" << i->GetDefault() << "\"\n";
-
+        }
         cfg_defaults << "\n// Every registered command dump\n";
         for (const auto &i : RegisteredCommandsList())
+        {
             cfg_defaults << "// " << i->GetName() << "\n";
+        }
     }
 }
 
-ConVar *CreateConVar(const std::string &name, const std::string &value, const std::string &help)
+ConVar *CreateConVar(std::string name, std::string value, std::string help)
 {
     char *namec  = new char[256];
     char *valuec = new char[256];
@@ -112,7 +121,7 @@ ConVar *CreateConVar(const std::string &name, const std::string &value, const st
     strncpy(valuec, value.c_str(), 255);
     strncpy(helpc, help.c_str(), 255);
     // logging::Info("Creating ConVar: %s %s %s", namec, valuec, helpc);
-    auto ret = new ConVar(const_cast<const char *>(namec), const_cast<const char *>(valuec), 0, const_cast<const char *>(helpc));
+    ConVar *ret = new ConVar(const_cast<const char *>(namec), const_cast<const char *>(valuec), 0, const_cast<const char *>(helpc));
     g_ICvar->RegisterConCommand(ret);
     RegisteredVarsList().push_back(ret);
     return ret;
@@ -139,13 +148,18 @@ Vector VischeckCorner(CachedEntity *player, CachedEntity *target, float maxdist,
     Vector origin     = player->m_vecOrigin();
 
     // if we can see an entity, we don't need to run calculations
-    if (VisCheckEntFromEnt(player, target) && (!checkWalkable || canReachVector(origin, target->m_vecOrigin())))
-        return origin;
+    if (VisCheckEntFromEnt(player, target))
+    {
+        if (!checkWalkable)
+            return origin;
+        else if (canReachVector(origin, target->m_vecOrigin()))
+            return origin;
+    }
 
-    for (uint8 i = 0; i < 8; ++i) // for loop for all 4 directions
+    for (int i = 0; i < 8; i++) // for loop for all 4 directions
     {
         // 40 * maxiterations = range in HU
-        for (int j = 0; j < maxiterations; ++j)
+        for (int j = 0; j < maxiterations; j++)
         {
             Vector virtualOrigin = origin;
             // what direction to go in
@@ -178,8 +192,6 @@ Vector VischeckCorner(CachedEntity *player, CachedEntity *target, float maxdist,
             case 7:
                 virtualOrigin.x = virtualOrigin.x + 20 * (j + 1);
                 virtualOrigin.y = virtualOrigin.y - 20 * (j + 1);
-                [[fallthrough]];
-            default:
                 break;
             }
             // check if player can see the players virtualOrigin
@@ -205,98 +217,96 @@ Vector VischeckCorner(CachedEntity *player, CachedEntity *target, float maxdist,
 // return Two Corners that connect perfectly to ent and local player
 std::pair<Vector, Vector> VischeckWall(CachedEntity *player, CachedEntity *target, float maxdist, bool checkWalkable)
 {
-    int max_iterations = static_cast<int>(maxdist / 40.0f);
-    Vector origin      = player->m_vecOrigin();
+    int maxiterations = maxdist / 40;
+    Vector origin     = player->m_vecOrigin();
 
     // if we can see an entity, we don't need to run calculations
     if (VisCheckEntFromEnt(player, target))
     {
         std::pair<Vector, Vector> orig(origin, target->m_vecOrigin());
-        if (!checkWalkable || canReachVector(origin, target->m_vecOrigin()))
+        if (!checkWalkable)
+            return orig;
+        else if (canReachVector(origin, target->m_vecOrigin()))
             return orig;
     }
 
-    for (uint8 i = 0; i < 8; ++i) // for loop for all 4 directions
+    for (int i = 0; i < 8; i++) // for loop for all 4 directions
     {
-        // 40 * max_iterations = range in HU
-        for (int j = 0; j < max_iterations; ++j)
+        // 40 * maxiterations = range in HU
+        for (int j = 0; j < maxiterations; j++)
         {
             Vector virtualOrigin = origin;
             // what direction to go in
             switch (i)
             {
             case 0:
-                virtualOrigin.x += 40.0f * (j + 1.0f);
+                virtualOrigin.x = virtualOrigin.x + 40 * (j + 1);
                 break;
             case 1:
-                virtualOrigin.x -= 40.0f * (j + 1.0f);
+                virtualOrigin.x = virtualOrigin.x - 40 * (j + 1);
                 break;
             case 2:
-                virtualOrigin.y += 40.0f * (j + 1.0f);
+                virtualOrigin.y = virtualOrigin.y + 40 * (j + 1);
                 break;
             case 3:
-                virtualOrigin.y -= 40.0f * (j + 1.0f);
+                virtualOrigin.y = virtualOrigin.y - 40 * (j + 1);
                 break;
             case 4:
-                virtualOrigin.x += 20.0f * (j + 1.0f);
-                virtualOrigin.y += 20.0f * (j + 1.0f);
+                virtualOrigin.x = virtualOrigin.x + 20 * (j + 1);
+                virtualOrigin.y = virtualOrigin.y + 20 * (j + 1);
                 break;
             case 5:
-                virtualOrigin.x -= 20.0f * (j + 1.0f);
-                virtualOrigin.y -= 20.0f * (j + 1.0f);
+                virtualOrigin.x = virtualOrigin.x - 20 * (j + 1);
+                virtualOrigin.y = virtualOrigin.y - 20 * (j + 1);
                 break;
             case 6:
-                virtualOrigin.x -= 20.0f * (j + 1.0f);
-                virtualOrigin.y += 20.0f * (j + 1.0f);
+                virtualOrigin.x = virtualOrigin.x - 20 * (j + 1);
+                virtualOrigin.y = virtualOrigin.y + 20 * (j + 1);
                 break;
             case 7:
-                virtualOrigin.x += 20.0f * (j + 1.0f);
-                virtualOrigin.y -= 20.0f * (j + 1.0f);
-                [[fallthrough]];
-            default:
+                virtualOrigin.x = virtualOrigin.x + 20 * (j + 1);
+                virtualOrigin.y = virtualOrigin.y - 20 * (j + 1);
                 break;
             }
             // check if player can see the players virtualOrigin
             if (!IsVectorVisible(origin, virtualOrigin, true))
                 continue;
-            for (uint8 i = 0; i < 8; ++i) // for loop for all 4 directions
+            for (int i = 0; i < 8; i++) // for loop for all 4 directions
             {
-                // 40 * max_iterations = range in HU
-                for (int j = 0; j < max_iterations; ++j)
+                // 40 * maxiterations = range in HU
+                for (int j = 0; j < maxiterations; j++)
                 {
                     Vector virtualOrigin2 = target->m_vecOrigin();
                     // what direction to go in
                     switch (i)
                     {
                     case 0:
-                        virtualOrigin2.x += 40.0f * (j + 1.0f);
+                        virtualOrigin2.x = virtualOrigin2.x + 40 * (j + 1);
                         break;
                     case 1:
-                        virtualOrigin2.x -= 40.0f * (j + 1.0f);
+                        virtualOrigin2.x = virtualOrigin2.x - 40 * (j + 1);
                         break;
                     case 2:
-                        virtualOrigin2.y += 40.0f * (j + 1.0f);
+                        virtualOrigin2.y = virtualOrigin2.y + 40 * (j + 1);
                         break;
                     case 3:
-                        virtualOrigin2.y -= 40.0f * (j + 1.0f);
+                        virtualOrigin2.y = virtualOrigin2.y - 40 * (j + 1);
                         break;
                     case 4:
-                        virtualOrigin2.x += 20.0f * (j + 1.0f);
-                        virtualOrigin2.y += 20.0f * (j + 1.0f);
+                        virtualOrigin2.x = virtualOrigin2.x + 20 * (j + 1);
+                        virtualOrigin2.y = virtualOrigin2.y + 20 * (j + 1);
                         break;
                     case 5:
-                        virtualOrigin2.x -= 20.0f * (j + 1.0f);
-                        virtualOrigin2.y -= 20.0f * (j + 1.0f);
+                        virtualOrigin2.x = virtualOrigin2.x - 20 * (j + 1);
+                        virtualOrigin2.y = virtualOrigin2.y - 20 * (j + 1);
                         break;
                     case 6:
-                        virtualOrigin2.x -= 20.0f * (j + 1.0f);
-                        virtualOrigin2.y += 20.0f * (j + 1.0f);
+                        virtualOrigin2.x = virtualOrigin2.x - 20 * (j + 1);
+                        virtualOrigin2.y = virtualOrigin2.y + 20 * (j + 1);
                         break;
                     case 7:
-                        virtualOrigin2.x += 20.0f * (j + 1.0f);
-                        virtualOrigin2.y -= 20.0f * (j + 1.0f);
-                        [[fallthrough]];
-                    default:
+                        virtualOrigin2.x = virtualOrigin2.x + 20 * (j + 1);
+                        virtualOrigin2.y = virtualOrigin2.y - 20 * (j + 1);
                         break;
                     }
                     // check if the virtualOrigin2 can see the target
@@ -333,65 +343,64 @@ std::pair<Vector, Vector> VischeckWall(CachedEntity *player, CachedEntity *targe
 // Returns a vectors max value. For example: {123,-150, 125} = 125
 float vectorMax(Vector i)
 {
-    __m128 vec = _mm_set_ps(i.z, i.y, i.x, -FLT_MAX);
-    __m128 max = _mm_max_ps(vec, _mm_shuffle_ps(vec, vec, _MM_SHUFFLE(0, 1, 2, 3)));
-    max        = _mm_max_ps(max, _mm_shuffle_ps(max, max, _MM_SHUFFLE(0, 1, 0, 1)));
-    return _mm_cvtss_f32(max);
+    return fmaxf(fmaxf(i.x, i.y), i.z);
 }
 
-// Returns a vector's absolute value. For example {123, -150, 125} -> {123, 150, 125}
+// Returns a vectors absolute value. For example {123,-150, 125} = {123,150,
+// 125}
 Vector vectorAbs(Vector i)
 {
-    __m128 sign_mask = _mm_set1_ps(-0.f); // -0.f = 1 << 31
-    __m128 v         = _mm_loadu_ps(&i.x);
-    v                = _mm_andnot_ps(sign_mask, v);
-    Vector result;
-    _mm_storeu_ps(&result.x, v);
+    Vector result = i;
+    result.x      = fabsf(result.x);
+    result.y      = fabsf(result.y);
+    result.z      = fabsf(result.z);
     return result;
 }
 
-// check to see if we can reach a vector or if it is too high / doesn't leave enough space for the player, optional second vector
+// check to see if we can reach a vector or if it is too high / doesn't leave
+// enough space for the player, optional second vector
 bool canReachVector(Vector loc, Vector dest)
 {
     if (!dest.IsZero())
     {
-        Vector dist        = dest - loc;
-        int max_iterations = static_cast<int>(floor(dest.DistTo(loc)) / 40.0f);
-        for (int i = 0; i < max_iterations; ++i)
+        Vector dist       = dest - loc;
+        int maxiterations = floor(dest.DistTo(loc)) / 40;
+        for (int i = 0; i < maxiterations; i++)
         {
             // math to get the next vector 40.0f in the direction of dest
-            Vector vec = loc + dist / vectorMax(vectorAbs(dist)) * 40.0f * (i + 1.0f);
+            Vector vec = loc + dist / vectorMax(vectorAbs(dist)) * 40.0f * (i + 1);
 
-            if (DistanceToGround({ vec.x, vec.y, vec.z + 5.0f }) >= 40.0f)
+            if (DistanceToGround({ vec.x, vec.y, vec.z + 5 }) >= 40)
                 return false;
 
-            for (uint8 j = 0; j < 4; ++j)
+            for (int j = 0; j < 4; j++)
             {
                 Vector directionalLoc = vec;
                 // what direction to check
                 switch (j)
                 {
                 case 0:
-                    directionalLoc.x += 40.0f;
+                    directionalLoc.x = directionalLoc.x + 40;
                     break;
                 case 1:
-                    directionalLoc.x -= 40.0f;
+                    directionalLoc.x = directionalLoc.x - 40;
                     break;
                 case 2:
-                    directionalLoc.y += 40.0f;
+                    directionalLoc.y = directionalLoc.y + 40;
                     break;
                 case 3:
-                    directionalLoc.y -= 40.0f;
+                    directionalLoc.y = directionalLoc.y - 40;
                     break;
                 }
                 trace_t trace;
                 Ray_t ray;
                 ray.Init(vec, directionalLoc);
                 {
+                    PROF_SECTION(IEVV_TraceRay);
                     g_ITrace->TraceRay(ray, 0x4200400B, &trace::filter_no_player, &trace);
                 }
                 // distance of trace < than 26
-                if (trace.startpos.DistToSqr(trace.endpos) < Sqr(26.0f))
+                if (trace.startpos.DistTo(trace.endpos) < 26.0f)
                     return false;
             }
         }
@@ -402,38 +411,39 @@ bool canReachVector(Vector loc, Vector dest)
         // higher to avoid small false positives, player can jump 42 hu
         // according to
         // the tf2 wiki
-        if (DistanceToGround({ loc.x, loc.y, loc.z + 5.0f }) >= 40.0f)
+        if (DistanceToGround({ loc.x, loc.y, loc.z + 5 }) >= 40)
             return false;
 
-        // check if there is enough space around the vector for a player to fit
+        // check if there is enough space arround the vector for a player to fit
         // for loop for all 4 directions
-        for (uint8 i = 0; i < 4; ++i)
+        for (int i = 0; i < 4; i++)
         {
             Vector directionalLoc = loc;
             // what direction to check
             switch (i)
             {
             case 0:
-                directionalLoc.x += 40.0f;
+                directionalLoc.x = directionalLoc.x + 40;
                 break;
             case 1:
-                directionalLoc.x -= 40.0f;
+                directionalLoc.x = directionalLoc.x - 40;
                 break;
             case 2:
-                directionalLoc.y += 40.0f;
+                directionalLoc.y = directionalLoc.y + 40;
                 break;
             case 3:
-                directionalLoc.y -= 40.0f;
+                directionalLoc.y = directionalLoc.y - 40;
                 break;
             }
             trace_t trace;
             Ray_t ray;
             ray.Init(loc, directionalLoc);
             {
+                PROF_SECTION(IEVV_TraceRay);
                 g_ITrace->TraceRay(ray, 0x4200400B, &trace::filter_no_player, &trace);
             }
             // distance of trace < than 26
-            if (trace.startpos.DistToSqr(trace.endpos) < Sqr(26.0f))
+            if (trace.startpos.DistTo(trace.endpos) < 26.0f)
                 return false;
         }
     }
@@ -442,34 +452,25 @@ bool canReachVector(Vector loc, Vector dest)
 
 std::string GetLevelName()
 {
-    const std::string &name = g_IEngine->GetLevelName();
-    const char *data        = name.data();
-    const size_t length     = name.length();
-    size_t slash            = 0;
-    size_t bsp              = length;
-
-    for (size_t i = length - 1; i != std::string::npos; --i)
-    {
-        if (data[i] == '/')
-        {
-            slash = i + 1;
-            break;
-        }
-        if (data[i] == '.')
-            bsp = i;
-    }
-
-    return { data + slash, bsp - slash };
+    std::string name(g_IEngine->GetLevelName());
+    size_t slash = name.find('/');
+    if (slash == std::string::npos)
+        slash = 0;
+    else
+        slash++;
+    size_t bsp    = name.find(".bsp");
+    size_t length = (bsp == std::string::npos ? name.length() - slash : bsp - slash);
+    return name.substr(slash, length);
 }
 
 std::pair<float, float> ComputeMovePrecise(const Vector &a, const Vector &b)
 {
-    Vector diff = b - a;
-    if (diff.IsZero())
-        return { 0.0f, 0.0f };
+    Vector diff = (b - a);
+    if (diff.Length() == 0.0f)
+        return { 0, 0 };
     const float x = diff.x;
     const float y = diff.y;
-    Vector vsilent(x, y, 0.0f);
+    Vector vsilent(x, y, 0);
     Vector ang;
     VectorAngles(vsilent, ang);
     float yaw = DEG2RAD(ang.y - current_user_cmd->viewangles.y);
@@ -481,12 +482,12 @@ std::pair<float, float> ComputeMovePrecise(const Vector &a, const Vector &b)
 
 Vector ComputeMove(const Vector &a, const Vector &b)
 {
-    Vector diff = b - a;
-    if (diff.IsZero())
+    Vector diff = (b - a);
+    if (diff.Length() == 0.0f)
         return Vector(0.0f);
     const float x = diff.x;
     const float y = diff.y;
-    Vector vsilent(x, y, 0.0f);
+    Vector vsilent(x, y, 0);
     Vector ang;
     VectorAngles(vsilent, ang);
     float yaw   = DEG2RAD(ang.y - current_user_cmd->viewangles.y);
@@ -506,7 +507,7 @@ Vector ComputeMove(const Vector &a, const Vector &b)
 
 ConCommand *CreateConCommand(const char *name, FnCommandCallback_t callback, const char *help)
 {
-    auto *ret = new ConCommand(name, callback, help);
+    ConCommand *ret = new ConCommand(name, callback, help);
     g_ICvar->RegisterConCommand(ret);
     RegisteredCommandsList().push_back(ret);
     return ret;
@@ -528,7 +529,7 @@ const char *GetBuildingName(CachedEntity *ent)
 
 void format_internal(std::stringstream &stream)
 {
-    (void) stream;
+    (void) (stream);
 }
 
 void ReplaceString(std::string &input, const std::string &what, const std::string &with_what)
@@ -609,7 +610,9 @@ void ReplaceSpecials(std::string &str)
             c += 5;
             // 2. Convert value to UTF-8
             if (val <= 0x7F)
+            {
                 str[i] = val;
+            }
             else if (val <= 0x7FF)
             {
                 str[i]     = 0xC0 | ((val >> 6) & 0x1F);
@@ -635,6 +638,8 @@ powerup_type GetPowerupOnPlayer(CachedEntity *player)
 {
     if (CE_BAD(player))
         return powerup_type::not_powerup;
+    //	if (!HasCondition<TFCond_HasRune>(player)) return
+    // powerup_type::not_powerup;
     if (HasCondition<TFCond_RuneStrength>(player))
         return powerup_type::strength;
     if (HasCondition<TFCond_RuneHaste>(player))
@@ -661,19 +666,19 @@ powerup_type GetPowerupOnPlayer(CachedEntity *player)
         return powerup_type::supernova;
     return powerup_type::not_powerup;
 }
-
-bool DidProjectileHit(Vector start_point, Vector end_point, CachedEntity *entity, float projectile_size, bool grav_comp, trace_t *tracer)
+bool didProjectileHit(Vector start_point, Vector end_point, CachedEntity *entity, float projectile_size, bool grav_comp, trace_t *tracer)
 {
-    trace::filter_default.SetSelf(RAW_ENT(LOCAL_E));
+
+    trace::filter_default.SetSelf(RAW_ENT(g_pLocalPlayer->entity));
     Ray_t ray;
     trace_t *trace_obj;
     if (tracer)
         trace_obj = tracer;
     else
         trace_obj = new trace_t;
-    ray.Init(start_point, end_point, Vector(0, -projectile_size, -projectile_size), Vector(0, projectile_size, projectile_size));
+    ray.Init(start_point, end_point, Vector(-projectile_size, -projectile_size, -projectile_size), Vector(projectile_size, projectile_size, projectile_size));
     g_ITrace->TraceRay(ray, MASK_SHOT_HULL, &trace::filter_default, trace_obj);
-    return (IClientEntity *) trace_obj->m_pEnt == RAW_ENT(entity) || grav_comp && !trace_obj->DidHit();
+    return (((IClientEntity *) trace_obj->m_pEnt) == RAW_ENT(entity) || (grav_comp ? !trace_obj->DidHit() : false));
 }
 
 // A function to find a weapon by WeaponID
@@ -684,7 +689,7 @@ int getWeaponByID(CachedEntity *player, int weaponid)
         return -1;
     int *hWeapons = &CE_INT(player, netvar.hMyWeapons);
     // Go through the handle array and search for the item
-    for (int i = 0; hWeapons[i]; ++i)
+    for (int i = 0; hWeapons[i]; i++)
     {
         if (IDX_BAD(HandleToIDX(hWeapons[i])))
             continue;
@@ -708,7 +713,7 @@ bool HasWeapon(CachedEntity *ent, int wantedId)
     if (!hWeapons)
         return false;
     // Go through the handle array and search for the item
-    for (int i = 0; hWeapons[i]; ++i)
+    for (int i = 0; hWeapons[i]; i++)
     {
         if (IDX_BAD(HandleToIDX(hWeapons[i])))
             continue;
@@ -718,7 +723,7 @@ bool HasWeapon(CachedEntity *ent, int wantedId)
         if (CE_VALID(weapon) && CE_INT(weapon, netvar.iItemDefinitionIndex) == wantedId)
             return true;
     }
-    // We didn't find the weapon we needed, return false
+    // We didnt find the weapon we needed, return false
     return false;
 }
 
@@ -726,15 +731,12 @@ CachedEntity *getClosestEntity(Vector vec)
 {
     float distance         = FLT_MAX;
     CachedEntity *best_ent = nullptr;
-    for (const auto &ent : entity_cache::player_cache)
+    for (auto const &ent : entity_cache::player_cache)
     {
-        if (!ent->m_vecDormantOrigin() || !ent->m_bAlivePlayer() || !ent->m_bEnemy())
-            continue;
 
-        const auto dist_sq = vec.DistToSqr(*ent->m_vecDormantOrigin());
-        if (dist_sq < distance)
+        if (CE_VALID(ent) && ent->m_vecDormantOrigin() && ent->m_bAlivePlayer() && ent->m_bEnemy() && vec.DistTo(ent->m_vecOrigin()) < distance)
         {
-            distance = dist_sq;
+            distance = vec.DistTo(*ent->m_vecDormantOrigin());
             best_ent = ent;
         }
     }
@@ -745,15 +747,12 @@ CachedEntity *getClosestNonlocalEntity(Vector vec)
 {
     float distance         = FLT_MAX;
     CachedEntity *best_ent = nullptr;
-    for (const auto &ent : entity_cache::player_cache)
+    for (auto const &ent : entity_cache::player_cache)
     {
-        if (!ent->m_IDX != g_pLocalPlayer->entity_idx || !ent->m_vecDormantOrigin() || !ent->m_bAlivePlayer() || !ent->m_bEnemy())
-            continue;
 
-        const auto dist_sq = vec.DistToSqr(*ent->m_vecDormantOrigin());
-        if (dist_sq < distance)
+        if (CE_VALID(ent) && ent->m_IDX != g_pLocalPlayer->entity_idx && ent->m_vecDormantOrigin() && ent->m_bAlivePlayer() && ent->m_bEnemy() && vec.DistTo(ent->m_vecOrigin()) < distance)
         {
-            distance = dist_sq;
+            distance = vec.DistTo(*ent->m_vecDormantOrigin());
             best_ent = ent;
         }
     }
@@ -762,9 +761,9 @@ CachedEntity *getClosestNonlocalEntity(Vector vec)
 
 void VectorTransform(const float *in1, const matrix3x4_t &in2, float *out)
 {
-    out[0] = in1[0] * in2[0][0] + in1[1] * in2[0][1] + in1[2] * in2[0][2] + in2[0][3];
-    out[1] = in1[0] * in2[1][0] + in1[1] * in2[1][1] + in1[2] * in2[1][2] + in2[1][3];
-    out[2] = in1[0] * in2[2][0] + in1[1] * in2[2][1] + in1[2] * in2[2][2] + in2[2][3];
+    out[0] = (in1[0] * in2[0][0] + in1[1] * in2[0][1] + in1[2] * in2[0][2]) + in2[0][3];
+    out[1] = (in1[0] * in2[1][0] + in1[1] * in2[1][1] + in1[2] * in2[1][2]) + in2[1][3];
+    out[2] = (in1[0] * in2[2][0] + in1[1] * in2[2][1] + in1[2] * in2[2][2]) + in2[2][3];
 }
 
 bool GetHitbox(CachedEntity *entity, int hb, Vector &out)
@@ -806,7 +805,7 @@ void MatrixAngles(const matrix3x4_t &matrix, float *angles)
     left[2]    = matrix[2][1];
     up[2]      = matrix[2][2];
 
-    float xyDist = std::hypot(forward[0], forward[1]);
+    float xyDist = std::sqrt(forward[0] * forward[0] + forward[1] * forward[1]);
 
     // enough here to get angles?
     if (xyDist > 0.001f)
@@ -835,17 +834,31 @@ void MatrixAngles(const matrix3x4_t &matrix, float *angles)
 
 void VectorAngles(Vector &forward, Vector &angles)
 {
-    if (forward[1] == 0.0f && forward[0] == 0.0f)
+    float tmp, yaw, pitch;
+
+    if (forward[1] == 0 && forward[0] == 0)
     {
-        angles[0] = forward[2] >= 0.0f ? 270.0f : 90.0f;
-        angles[1] = 0.0f;
+        yaw = 0;
+        if (forward[2] > 0)
+            pitch = 270;
+        else
+            pitch = 90;
     }
     else
     {
-        angles[1] = std::remainder(RAD2DEG(std::atan2(forward[1], forward[0])), 360.0f);
-        angles[0] = std::remainder(RAD2DEG(std::atan2(-forward[2], std::hypot(forward[0], forward[1]))), 360.0f);
+        yaw = (atan2(forward[1], forward[0]) * 180 / PI);
+        if (yaw < 0)
+            yaw += 360;
+
+        tmp   = sqrt((forward[0] * forward[0] + forward[1] * forward[1]));
+        pitch = (atan2(-forward[2], tmp) * 180 / PI);
+        if (pitch < 0)
+            pitch += 360;
     }
-    angles[2] = 0.0f;
+
+    angles[0] = pitch;
+    angles[1] = yaw;
+    angles[2] = 0;
 }
 
 // Forward, right, and up
@@ -865,15 +878,15 @@ void AngleVectors3(const QAngle &angles, Vector *forward, Vector *right, Vector 
 
     if (right)
     {
-        right->x = sr * sp * cy - cr * sy;
-        right->y = sr * sp * sy + cr * cy;
-        right->z = sr * cp;
+        right->x = (-1 * sr * sp * cy + -1 * cr * -sy);
+        right->y = (-1 * sr * sp * sy + -1 * cr * cy);
+        right->z = -1 * sr * cp;
     }
 
     if (up)
     {
-        up->x = cr * sp * cy + sr * sy;
-        up->y = cr * sp * sy - sr * cy;
+        up->x = (cr * sp * cy + -sr * -sy);
+        up->y = (cr * sp * sy + -sr * cy);
         up->z = cr * cp;
     }
 }
@@ -955,7 +968,9 @@ char GetChar(ButtonCode_t button)
         return ';';
     default:
         if (button >= KEY_PAD_0 && button <= KEY_PAD_9)
+        {
             return button - KEY_PAD_0 + '0';
+        }
         if (strlen(g_IInputSystem->ButtonCodeToString(button)) != 1)
             return 0;
         return *g_IInputSystem->ButtonCodeToString(button);
@@ -969,7 +984,7 @@ void FixMovement(CUserCmd &cmd, Vector &viewangles)
     movement.x = cmd.forwardmove;
     movement.y = cmd.sidemove;
     movement.z = cmd.upmove;
-    speed = std::hypot(movement.x, movement.y);
+    speed      = sqrt(movement.x * movement.x + movement.y * movement.y);
     VectorAngles(movement, ang);
     yaw             = DEG2RAD(ang.y - viewangles.y + cmd.viewangles.y);
     cmd.forwardmove = cos(yaw) * speed;
@@ -978,7 +993,14 @@ void FixMovement(CUserCmd &cmd, Vector &viewangles)
 
 bool AmbassadorCanHeadshot()
 {
-    return CE_FLOAT(LOCAL_W, netvar.flLastFireTime) - SERVER_TIME <= 1.0f;
+    if (IsAmbassador(g_pLocalPlayer->weapon()))
+    {
+        if ((g_GlobalVars->curtime - CE_FLOAT(g_pLocalPlayer->weapon(), netvar.flLastFireTime)) <= 1.0)
+        {
+            return false;
+        }
+    }
+    return true;
 }
 
 static std::random_device random_device;
@@ -1000,7 +1022,7 @@ bool IsEntityVisible(CachedEntity *entity, int hb)
 {
     if (g_Settings.bInvalid)
         return false;
-    if (entity == LOCAL_E)
+    if (entity == g_pLocalPlayer->entity)
         return true;
     if (hb == -1)
         return IsEntityVectorVisible(entity, entity->m_vecOrigin());
@@ -1011,23 +1033,26 @@ bool IsEntityVisible(CachedEntity *entity, int hb)
 bool IsEntityVectorVisible(CachedEntity *entity, Vector endpos, bool use_weapon_offset, unsigned int mask, trace_t *trace, bool hit)
 {
     trace_t trace_object;
+
     if (!trace)
         trace = &trace_object;
     Ray_t ray;
 
-    if (entity == LOCAL_E)
+    if (entity == g_pLocalPlayer->entity)
         return true;
-    trace::filter_default.SetSelf(RAW_ENT(LOCAL_E));
+    trace::filter_default.SetSelf(RAW_ENT(g_pLocalPlayer->entity));
     Vector eye = g_pLocalPlayer->v_Eye;
     // Adjust for weapon offsets if needed
     if (use_weapon_offset)
         eye = getShootPos(GetAimAtAngles(eye, endpos, LOCAL_E));
     ray.Init(eye, endpos);
     {
-        if (!*tcm || g_Settings.is_create_move)
+        PROF_SECTION(IEVV_TraceRay);
+        if (!tcm || g_Settings.is_create_move)
             g_ITrace->TraceRay(ray, mask, &trace::filter_default, trace);
     }
-    return (IClientEntity *) trace->m_pEnt == RAW_ENT(entity) || !hit && !trace->DidHit();
+
+    return (((IClientEntity *) trace->m_pEnt) == RAW_ENT(entity) || (hit ? false : !trace->DidHit()));
 }
 
 // Get all the corners of a box. Taken from sauce engine.
@@ -1038,57 +1063,67 @@ void GenerateBoxVertices(const Vector &vOrigin, const QAngle &angles, const Vect
     AngleMatrix(angles, fRotateMatrix);
 
     Vector vecPos;
-    for (uint8 i = 0; i < 8; ++i)
+    for (int i = 0; i < 8; ++i)
     {
-        vecPos[0] = i & 0x1 ? vMaxs[0] : vMins[0];
-        vecPos[1] = i & 0x2 ? vMaxs[1] : vMins[1];
-        vecPos[2] = i & 0x4 ? vMaxs[2] : vMins[2];
+        vecPos[0] = (i & 0x1) ? vMaxs[0] : vMins[0];
+        vecPos[1] = (i & 0x2) ? vMaxs[1] : vMins[1];
+        vecPos[2] = (i & 0x4) ? vMaxs[2] : vMins[2];
 
         VectorRotate(vecPos, fRotateMatrix, pVerts[i]);
         pVerts[i] += vOrigin;
     }
 }
 
-// For when you need to vis check something that isn't the local player
+// For when you need to vis check something that isnt the local player
 bool VisCheckEntFromEnt(CachedEntity *startEnt, CachedEntity *endEnt)
 {
-    // We setSelf as the starting ent as we don't want to hit it, we want the other ent
+    // We setSelf as the starting ent as we dont want to hit it, we want the
+    // other ent
     trace_t trace;
     trace::filter_default.SetSelf(RAW_ENT(startEnt));
 
-    // Set up the trace starting with the origin of the starting ent attempting to hit the origin of the end ent
+    // Setup the trace starting with the origin of the starting ent attemting to
+    // hit the origin of the end ent
     Ray_t ray;
     ray.Init(startEnt->m_vecOrigin(), endEnt->m_vecOrigin());
     {
+        PROF_SECTION(IEVV_TraceRay);
         g_ITrace->TraceRay(ray, MASK_SHOT_HULL, &trace::filter_default, &trace);
     }
     // Is the entity that we hit our target ent? if so, the vis check passes
-    if (trace.m_pEnt && (IClientEntity *) trace.m_pEnt == RAW_ENT(endEnt))
-        return true;
-
-    // Since we didn't hit our target ent, the vis check failed so return false
+    if (trace.m_pEnt)
+    {
+        if ((((IClientEntity *) trace.m_pEnt)) == RAW_ENT(endEnt))
+            return true;
+    }
+    // Since we didnt hit our target ent, the vis check failed so return false
     return false;
 }
 
-// Use when you need to vis check something, but it's not the ent origin that you
+// Use when you need to vis check something but its not the ent origin that you
 // use, so we check from the vector to the ent, ignoring the first just in case
 bool VisCheckEntFromEntVector(Vector startVector, CachedEntity *startEnt, CachedEntity *endEnt)
 {
-    // We setSelf as the starting ent as we don't want to hit it, we want the other ent
+    // We setSelf as the starting ent as we dont want to hit it, we want the
+    // other ent
     trace_t trace;
     trace::filter_default.SetSelf(RAW_ENT(startEnt));
 
-    // Set up the trace starting with the origin of the starting ent attempting to hit the origin of the end ent
+    // Setup the trace starting with the origin of the starting ent attemting to
+    // hit the origin of the end ent
     Ray_t ray;
     ray.Init(startVector, endEnt->m_vecOrigin());
     {
+        PROF_SECTION(IEVV_TraceRay);
         g_ITrace->TraceRay(ray, MASK_SHOT_HULL, &trace::filter_default, &trace);
     }
     // Is the entity that we hit our target ent? if so, the vis check passes
-    if (trace.m_pEnt && (IClientEntity *) trace.m_pEnt == RAW_ENT(endEnt))
-        return true;
-
-    // Since we didn't hit our target ent, the vis check failed so return false
+    if (trace.m_pEnt)
+    {
+        if ((((IClientEntity *) trace.m_pEnt)) == RAW_ENT(endEnt))
+            return true;
+    }
+    // Since we didnt hit our target ent, the vis check failed so return false
     return false;
 }
 
@@ -1109,9 +1144,26 @@ bool IsBuildingVisible(CachedEntity *ent)
 
 void fClampAngle(Vector &qaAng)
 {
-    qaAng.x = fmod(qaAng[0] + 89.0f, 180.0f) - 89.0f;
-    qaAng.y = fmod(qaAng[1] + 180.0f, 360.0f) - 180.0f;
-    qaAng.z = 0.0f;
+    while (qaAng[0] > 89)
+        qaAng[0] -= 180;
+
+    while (qaAng[0] < -89)
+        qaAng[0] += 180;
+
+    while (qaAng[1] > 180)
+        qaAng[1] -= 360;
+
+    while (qaAng[1] < -180)
+        qaAng[1] += 360;
+
+    qaAng.z = 0;
+}
+
+float DistToSqr(CachedEntity *entity)
+{
+    if (CE_BAD(entity))
+        return 0.0f;
+    return g_pLocalPlayer->v_Origin.DistToSqr(entity->m_vecOrigin());
 }
 
 bool IsProjectileCrit(CachedEntity *ent)
@@ -1126,14 +1178,13 @@ CachedEntity *weapon_get(CachedEntity *entity)
     int handle, eid;
 
     if (CE_BAD(entity))
-        return nullptr;
+        return 0;
     handle = CE_INT(entity, netvar.hActiveWeapon);
     eid    = HandleToIDX(handle);
     if (IDX_BAD(eid))
-        return nullptr;
+        return 0;
     return ENTITY(eid);
 }
-
 float ProjGravMult(int class_id, float x_speed)
 {
     switch (class_id)
@@ -1148,6 +1199,7 @@ float ProjGravMult(int class_id, float x_speed)
             return 0.1f;
         else
             return 0.5f;
+
     case CL_CLASS(CTFProjectile_Flare):
         return 0.25f;
     case CL_CLASS(CTFProjectile_HealingBolt):
@@ -1163,7 +1215,6 @@ float ProjGravMult(int class_id, float x_speed)
         return 0.3f;
     }
 }
-
 weaponmode GetWeaponMode(CachedEntity *ent)
 {
     int weapon_handle, weapon_idx, slot;
@@ -1179,7 +1230,7 @@ weaponmode GetWeaponMode(CachedEntity *ent)
         // logging::Info("IDX_BAD: %i", weapon_idx);
         return weaponmode::weapon_invalid;
     }
-    weapon = ENTITY(weapon_idx);
+    weapon = (ENTITY(weapon_idx));
     if (CE_BAD(weapon))
         return weaponmode::weapon_invalid;
     int classid = weapon->m_iClassID();
@@ -1199,7 +1250,6 @@ weaponmode GetWeaponMode(CachedEntity *ent)
     case CL_CLASS(CTFGrenadeLauncher):
     case CL_CLASS(CTFPipebombLauncher):
     case CL_CLASS(CTFCompoundBow):
-    case CL_CLASS(CTFFlameThrower):
     case CL_CLASS(CTFBat_Wood):
     case CL_CLASS(CTFBat_Giftwrap):
     case CL_CLASS(CTFFlareGun):
@@ -1236,6 +1286,11 @@ weaponmode GetWeaponMode(CachedEntity *ent)
     }
 }
 
+weaponmode GetWeaponMode()
+{
+    return g_pLocalPlayer->weapon_mode;
+}
+
 bool LineIntersectsBox(Vector &bmin, Vector &bmax, Vector &lmin, Vector &lmax)
 {
     if (lmax.x < bmin.x && lmin.x < bmin.x)
@@ -1257,6 +1312,8 @@ bool GetProjectileData(CachedEntity *weapon, float &speed, float &gravity, float
 {
     float rspeed, rgrav, rinitial_vel;
 
+    IF_GAME(!IsTF()) return false;
+
     if (CE_BAD(weapon))
         return false;
     rspeed       = 0.0f;
@@ -1266,32 +1323,43 @@ bool GetProjectileData(CachedEntity *weapon, float &speed, float &gravity, float
     switch (weapon->m_iClassID())
     {
     case CL_CLASS(CTFRocketLauncher_DirectHit):
+    {
         rspeed = 1980.0f;
         break;
+    }
     case CL_CLASS(CTFParticleCannon): // Cow Mangler 5000
     case CL_CLASS(CTFRocketLauncher_AirStrike):
     case CL_CLASS(CTFRocketLauncher):
+    {
         rspeed = 1100.0f;
         // Libery Launcher
         if (CE_INT(weapon, netvar.iItemDefinitionIndex) == 414)
             rspeed = 1540.0f;
         break;
+    }
     case CL_CLASS(CTFCannon):
+    {
         rspeed       = 1453.9f;
         rgrav        = 1.0f;
         rinitial_vel = 200.0f;
         break;
+    }
     case CL_CLASS(CTFGrenadeLauncher):
-        rspeed       = 1217.0f;
+    {
+        rspeed       = 1216.6f;
         rgrav        = 1.0f;
         rinitial_vel = 200.0f;
-        // Loch'n Load
-        if (CE_INT(weapon, netvar.iItemDefinitionIndex) == 308)
-            rspeed = 1513.3f;
+        IF_GAME(IsTF2())
+        {
+            // Loch'n Load
+            if (CE_INT(weapon, netvar.iItemDefinitionIndex) == 308)
+                rspeed = 1513.3f;
+        }
         break;
+    }
     case CL_CLASS(CTFPipebombLauncher):
     {
-        float chargetime = SERVER_TIME - CE_FLOAT(weapon, netvar.flChargeBeginTime);
+        float chargetime = g_GlobalVars->curtime - CE_FLOAT(weapon, netvar.flChargeBeginTime);
         if (!CE_FLOAT(weapon, netvar.flChargeBeginTime))
             chargetime = 0.0f;
         rspeed       = RemapValClamped(chargetime, 0.0f, 4.0f, 925.38, 2409.2);
@@ -1303,7 +1371,7 @@ bool GetProjectileData(CachedEntity *weapon, float &speed, float &gravity, float
     }
     case CL_CLASS(CTFCompoundBow):
     {
-        float chargetime = SERVER_TIME - CE_FLOAT(weapon, netvar.flChargeBeginTime);
+        float chargetime = g_GlobalVars->curtime - CE_FLOAT(weapon, netvar.flChargeBeginTime);
         if (CE_FLOAT(weapon, netvar.flChargeBeginTime) == 0)
             chargetime = 0;
         else
@@ -1312,61 +1380,102 @@ bool GetProjectileData(CachedEntity *weapon, float &speed, float &gravity, float
             if (!pUpdateRate)
                 pUpdateRate = g_pCVar->FindVar("cl_updaterate");
             else
+            {
                 chargetime += TICKS_TO_TIME(1);
+                // chargetime += ROUND_TO_TICKS(MAX(cl_interp->GetFloat(), cl_interp_ratio->GetFloat() / pUpdateRate->GetFloat()));
+            }
         }
-        rspeed = RemapValClamped(chargetime, 0.0f, 1.0f, 1800.0f, 2600.0f);
-        rgrav  = RemapValClamped(chargetime, 0.0f, 1.0f, 0.5f, 0.1f);
+        rspeed = RemapValClamped(chargetime, 0.0f, 1.f, 1800, 2600);
+        rgrav  = RemapValClamped(chargetime, 0.0f, 1.f, 0.5, 0.1);
         break;
     }
     case CL_CLASS(CTFBat_Giftwrap):
     case CL_CLASS(CTFBat_Wood):
+    {
         rspeed = 3000.0f;
         rgrav  = 0.5f;
         break;
+    }
     case CL_CLASS(CTFFlareGun):
     case CL_CLASS(CTFFlareGun_Revenge): // Detonator
+    {
         rspeed = 2000.0f;
-        rgrav  = 0.3f;
+        rgrav  = 0.25f;
         break;
+    }
     case CL_CLASS(CTFSyringeGun):
-        rspeed = 1000.0f;
+    {
         rgrav  = 0.3f;
+        rspeed = 1000.0f;
         break;
+    }
     case CL_CLASS(CTFCrossbow):
     case CL_CLASS(CTFShotgunBuildingRescue):
-        rspeed = 2400.0f;
+    {
         rgrav  = 0.2f;
+        rspeed = 2400.0f;
         break;
+    }
     case CL_CLASS(CTFDRGPomson):
     case CL_CLASS(CTFRaygun): // Righteous Bison
+    {
         rspeed = 1200.0f;
         break;
+    }
     case CL_CLASS(CTFWeaponFlameBall):
     case CL_CLASS(CTFCleaver):
+    {
         rspeed = 3000.0f;
         break;
-    case CL_CLASS(CTFFlameThrower):
-        rspeed = 1000.0f;
-        break;
+    }
     case CL_CLASS(CTFGrapplingHook):
+    {
         rspeed = 1500.0f;
         break;
+    }
     case CL_CLASS(CTFJarMilk):
+    {
         rspeed = 1019.9f;
         break;
+    }
     case CL_CLASS(CTFJar):
+    {
         rspeed = 1017.9f;
         break;
+    }
     case CL_CLASS(CTFJarGas):
+    {
         rspeed = 2009.2f;
         break;
+    }
     }
 
     speed          = rspeed;
     gravity        = rgrav;
     start_velocity = rinitial_vel;
-    return rspeed || rgrav || rinitial_vel;
+    return (rspeed || rgrav || rinitial_vel);
 }
+
+/*const char* MakeInfoString(IClientEntity* player) {
+    char* buf = new char[256]();
+    player_info_t info;
+    if (!GetPlayerInfo(player->entindex(), &info)) return (const
+char*)0; logging::Info("a"); int hWeapon = NET_INT(player,
+netvar.hActiveWeapon); if (NET_BYTE(player, netvar.iLifeState)) { sprintf(buf,
+"%s is dead %s", info.name, tfclasses[NET_INT(player, netvar.iClass)]); return
+buf;
+    }
+    if (hWeapon) {
+        IClientEntity* weapon = ENTITY(hWeapon & 0xFFF);
+        sprintf(buf, "%s is %s with %i health using %s", info.name,
+tfclasses[NET_INT(player, netvar.iClass)], NET_INT(player, netvar.iHealth),
+weapon->GetClientClass()->GetName()); } else { sprintf(buf, "%s is %s with %i
+health", info.name, tfclasses[NET_INT(player, netvar.iClass)], NET_INT(player,
+netvar.iHealth));
+    }
+    logging::Info("Result: %s", buf);
+    return buf;
+}*/
 
 bool IsVectorVisible(Vector origin, Vector target, bool enviroment_only, CachedEntity *self, unsigned int mask)
 {
@@ -1377,8 +1486,9 @@ bool IsVectorVisible(Vector origin, Vector target, bool enviroment_only, CachedE
 
         trace::filter_no_player.SetSelf(RAW_ENT(self));
         ray.Init(origin, target);
+        PROF_SECTION(IEVV_TraceRay);
         g_ITrace->TraceRay(ray, mask, &trace::filter_no_player, &trace_visible);
-        return trace_visible.fraction == 1.0f;
+        return (trace_visible.fraction == 1.0f);
     }
     else
     {
@@ -1387,8 +1497,9 @@ bool IsVectorVisible(Vector origin, Vector target, bool enviroment_only, CachedE
 
         trace::filter_no_entity.SetSelf(RAW_ENT(self));
         ray.Init(origin, target);
+        PROF_SECTION(IEVV_TraceRay);
         g_ITrace->TraceRay(ray, mask, &trace::filter_no_entity, &trace_visible);
-        return trace_visible.fraction == 1.0f;
+        return (trace_visible.fraction == 1.0f);
     }
 }
 
@@ -1398,50 +1509,40 @@ bool IsVectorVisibleNavigation(Vector origin, Vector target, unsigned int mask)
     Ray_t ray;
 
     ray.Init(origin, target);
+    PROF_SECTION(IEVV_TraceRay);
     g_ITrace->TraceRay(ray, mask, &trace::filter_navigation, &trace_visible);
-    return trace_visible.fraction == 1.0f;
+    return (trace_visible.fraction == 1.0f);
 }
 
 void WhatIAmLookingAt(int *result_eindex, Vector *result_pos)
 {
-    static QAngle prev_angle   = QAngle(0.0f, 0.0f, 0.0f);
-    static Vector prev_forward = Vector(0.0f, 0.0f, 0.0f);
-
-    // Check if the player's view direction has changed since the last call to this function.
+    Ray_t ray;
+    Vector forward;
+    float sp, sy, cp, cy;
     QAngle angle;
+    trace_t trace;
+
+    trace::filter_default.SetSelf(RAW_ENT(g_pLocalPlayer->entity));
     g_IEngine->GetViewAngles(angle);
-    bool angle_changed = angle != prev_angle;
-    prev_angle         = angle;
-
-    // Compute the forward vector if the angle has changed or if it has not been computed before.
-    static auto forward = Vector(0.0f);
-    if (angle_changed || prev_forward == Vector(0.0f))
+    sy        = sinf(DEG2RAD(angle[1]));
+    cy        = cosf(DEG2RAD(angle[1]));
+    sp        = sinf(DEG2RAD(angle[0]));
+    cp        = cosf(DEG2RAD(angle[0]));
+    forward.x = cp * cy;
+    forward.y = cp * sy;
+    forward.z = -sp;
+    forward   = forward * 8192.0f + g_pLocalPlayer->v_Eye;
+    ray.Init(g_pLocalPlayer->v_Eye, forward);
     {
-        float sp, sy, cp, cy;
-        sincosf(DEG2RAD(angle[0]), &sp, &cp);
-        sincosf(DEG2RAD(angle[1]), &sy, &cy);
-        forward.x    = cp * cy;
-        forward.y    = cp * sy;
-        forward.z    = -sp;
-        prev_forward = forward;
+        PROF_SECTION(IEVV_TraceRay);
+        g_ITrace->TraceRay(ray, 0x4200400B, &trace::filter_default, &trace);
     }
-
-    // Perform the raycast if the angle has changed or if the forward vector has not been computed before.
-    static trace_t trace;
-    if (angle_changed || prev_forward == Vector(0.0f))
-    {
-        Vector endpos = g_pLocalPlayer->v_Eye + forward * 8192.0f;
-        Ray_t ray;
-        ray.Init(g_pLocalPlayer->v_Eye, endpos);
-        {
-            g_ITrace->TraceRay(ray, 0x4200400B, &trace::filter_default, &trace);
-        }
-    }
-
     if (result_pos)
         *result_pos = trace.endpos;
     if (result_eindex)
-        *result_eindex = trace.m_pEnt ? ((IClientEntity *) trace.m_pEnt)->entindex() : -1;
+        *result_eindex = -1;
+    if (trace.m_pEnt && result_eindex)
+        *result_eindex = ((IClientEntity *) (trace.m_pEnt))->entindex();
 }
 
 Vector GetForwardVector(Vector origin, Vector viewangles, float distance, CachedEntity *punch_entity)
@@ -1450,11 +1551,13 @@ Vector GetForwardVector(Vector origin, Vector viewangles, float distance, Cached
     float sp, sy, cp, cy;
     QAngle angle = VectorToQAngle(viewangles);
     // Compensate for punch angle
-    if (*should_correct_punch && punch_entity)
+    if (punch_entity && should_correct_punch)
         angle -= VectorToQAngle(CE_VECTOR(punch_entity, netvar.vecPunchAngle));
 
-    sincosf(DEG2RAD(angle[1]), &sy, &cy);
-    sincosf(DEG2RAD(angle[0]), &sp, &cp);
+    sy        = sinf(DEG2RAD(angle[1]));
+    cy        = cosf(DEG2RAD(angle[1]));
+    sp        = sinf(DEG2RAD(angle[0]));
+    cp        = cosf(DEG2RAD(angle[0]));
     forward.x = cp * cy;
     forward.y = cp * sy;
     forward.z = -sp;
@@ -1467,18 +1570,18 @@ Vector GetForwardVector(float distance, CachedEntity *punch_entity)
     return GetForwardVector(g_pLocalPlayer->v_Eye, g_pLocalPlayer->v_OrigViewangles, distance, punch_entity);
 }
 
-// TODO: Change it to be based on the model
 bool IsSentryBuster(CachedEntity *entity)
 {
-    return entity->m_Type() == EntityType::ENTITY_PLAYER && CE_INT(entity, netvar.iClass) == tf_class::tf_demoman && g_pPlayerResource->GetMaxHealth(entity) == 2500;
+    return (entity->m_Type() == EntityType::ENTITY_PLAYER && CE_INT(entity, netvar.iClass) == tf_class::tf_demoman && g_pPlayerResource->GetMaxHealth(entity) == 2500);
 }
 
 bool IsAmbassador(CachedEntity *entity)
 {
+    IF_GAME(!IsTF2()) return false;
     if (entity->m_iClassID() != CL_CLASS(CTFRevolver))
         return false;
     const int &defidx = CE_INT(entity, netvar.iItemDefinitionIndex);
-    return defidx == 61 || defidx == 1006;
+    return (defidx == 61 || defidx == 1006);
 }
 
 bool IsPlayerInvulnerable(CachedEntity *player)
@@ -1489,11 +1592,6 @@ bool IsPlayerInvulnerable(CachedEntity *player)
 bool IsPlayerCritBoosted(CachedEntity *player)
 {
     return HasConditionMask<KCritBoostMask.cond_0, KCritBoostMask.cond_1, KCritBoostMask.cond_2, KCritBoostMask.cond_3>(player);
-}
-
-bool IsPlayerMiniCritBoosted(CachedEntity *player)
-{
-    return HasConditionMask<KMiniCritBoostMask.cond_0, KMiniCritBoostMask.cond_1, KMiniCritBoostMask.cond_2, KMiniCritBoostMask.cond_3>(player);
 }
 
 bool IsPlayerInvisible(CachedEntity *player)
@@ -1517,73 +1615,82 @@ bool IsPlayerResistantToCurrentWeapon(CachedEntity *player)
     case CL_CLASS(CTFParticleCannon):
     case CL_CLASS(CTFGrenadeLauncher):
     case CL_CLASS(CTFPipebombLauncher):
-        return HasCondition<TFCond_UberBlastResist>(player);
+        if (HasCondition<TFCond_UberBlastResist>(player))
+            return true;
+        break;
     case CL_CLASS(CTFCompoundBow):
     case CL_CLASS(CTFSyringeGun):
     case CL_CLASS(CTFCrossbow):
     case CL_CLASS(CTFShotgunBuildingRescue):
     case CL_CLASS(CTFDRGPomson):
     case CL_CLASS(CTFRaygun):
-        return HasCondition<TFCond_UberBulletResist>(player);
+        if (HasCondition<TFCond_UberBulletResist>(player))
+            return true;
+        break;
     case CL_CLASS(CTFWeaponFlameBall):
     case CL_CLASS(CTFFlareGun):
     case CL_CLASS(CTFFlareGun_Revenge):
     case CL_CLASS(CTFFlameRocket):
     case CL_CLASS(CTFFlameThrower):
-        return HasCondition<TFCond_UberFireResist>(player);
+        if (HasCondition<TFCond_UberFireResist>(player))
+            return true;
+        break;
     default:
-        return GetWeaponMode() == weaponmode::weapon_hitscan && HasCondition<TFCond_UberBulletResist>(player);
+        if (g_pLocalPlayer->weapon_mode == weaponmode::weapon_hitscan && HasCondition<TFCond_UberBulletResist>(player))
+            return true;
     }
+    return false;
 }
 
-Vector CalcAngle(const Vector &src, const Vector &dst)
+// F1 c&p
+Vector CalcAngle(Vector src, Vector dst)
 {
-    Vector delta  = src - dst;
-    float hyp_sqr = delta.LengthSqr();
-    Vector aim_angles;
-
-    aim_angles.x = atanf(delta.z / FastSqrt(hyp_sqr)) * RADPI;
-    aim_angles.y = atan2f(delta.y, delta.x) * RADPI;
-    aim_angles.z = 0.0f;
-
-    if (delta.x >= 0.0f)
-        aim_angles.y += 180.0f;
-
-    return aim_angles;
+    Vector AimAngles, delta;
+    float hyp;
+    delta       = src - dst;
+    hyp         = sqrtf((delta.x * delta.x) + (delta.y * delta.y)); // SUPER SECRET IMPROVEMENT CODE NAME DONUT STEEL
+    AimAngles.x = atanf(delta.z / hyp) * RADPI;
+    AimAngles.y = atanf(delta.y / delta.x) * RADPI;
+    AimAngles.z = 0.0f;
+    if (delta.x >= 0.0)
+        AimAngles.y += 180.0f;
+    return AimAngles;
 }
 
-void MakeVector(const Vector &angle, Vector &vector)
+void MakeVector(Vector angle, Vector &vector)
 {
-    float pitch = DEG2RAD(angle.x);
-    float yaw   = DEG2RAD(angle.y);
-    float tmp   = cos(pitch);
-
-    vector.x = tmp * cos(yaw);
-    vector.y = sin(yaw) * tmp;
-    vector.z = -sin(pitch);
+    float pitch, yaw, tmp;
+    pitch     = float(angle[0] * PI / 180);
+    yaw       = float(angle[1] * PI / 180);
+    tmp       = float(cos(pitch));
+    vector[0] = float(-tmp * -cos(yaw));
+    vector[1] = float(sin(yaw) * tmp);
+    vector[2] = float(-sin(pitch));
 }
 
-float GetFov(const Vector &angle, const Vector &src, const Vector &dst)
+float GetFov(Vector angle, Vector src, Vector dst)
 {
     Vector ang, aim;
+    float mag, u_dot_v;
     ang = CalcAngle(src, dst);
 
     MakeVector(angle, aim);
     MakeVector(ang, ang);
 
-    float mag_sqr = aim.LengthSqr();
-    float u_dot_v = aim.Dot(ang);
+    mag     = sqrtf(pow(aim.x, 2) + pow(aim.y, 2) + pow(aim.z, 2));
+    u_dot_v = aim.Dot(ang);
 
-    // Avoid out of domain error
-    if (u_dot_v >= mag_sqr)
+    // Congratulations! you managed to go out of domain. That means you are directly on the target
+    // And floating point inprecision breaks this function making it return NAN, so we "fix" it via this.
+    if (u_dot_v / (pow(mag, 2)) > 1.0f)
         return 0;
 
-    return RAD2DEG(acos(u_dot_v / mag_sqr));
+    return RAD2DEG(acos(u_dot_v / (pow(mag, 2))));
 }
 
 bool CanHeadshot()
 {
-    return g_pLocalPlayer->flZoomBegin > 0.0f && SERVER_TIME - g_pLocalPlayer->flZoomBegin > 0.2f;
+    return (g_pLocalPlayer->flZoomBegin > 0.0f && (g_GlobalVars->curtime - g_pLocalPlayer->flZoomBegin > 0.2f));
 }
 
 bool CanShoot()
@@ -1596,7 +1703,7 @@ float ATTRIB_HOOK_FLOAT(float base_value, const char *search_string, IClientEnti
 {
     typedef float (*AttribHookFloat_t)(float, const char *, IClientEntity *, void *, bool);
 
-    static uintptr_t AttribHookFloat = e8call_direct(CSignature::GetClientSignature("E8 ? ? ? ? 8B 03 89 1C 24 D9 5D ? FF 90 ? ? ? ? 89 C7 8B 06 89 34 24 FF 90 ? ? ? ? 89 FA C1 E2 08 09 C2 33 15 ? ? ? ? 39 93 ? ? ? ? 74 ? 89 93 ? ? ? ? 89 14 24 E8 ? ? ? ? C7 44 24 ? 0F 27 00 00 BE 01 00 00 00"));
+    static uintptr_t AttribHookFloat = e8call_direct(gSignatures.GetClientSignature("E8 ? ? ? ? 8B 03 89 1C 24 D9 5D ? FF 90 ? ? ? ? 89 C7 8B 06 89 34 24 FF 90 ? ? ? ? 89 FA C1 E2 08 09 C2 33 15 ? ? ? ? 39 93 ? ? ? ? 74 ? 89 93 ? ? ? ? 89 14 24 E8 ? ? ? ? C7 44 24 ? 0F 27 00 00 BE 01 00 00 00"));
     static auto AttribHookFloat_fn   = AttribHookFloat_t(AttribHookFloat);
 
     return AttribHookFloat_fn(base_value, search_string, ent, buffer, is_global_const_string);
@@ -1626,7 +1733,7 @@ void FastStop()
 
     auto speed    = vel.Length2D();
     auto friction = sv_friction->GetFloat() * CE_FLOAT(LOCAL_E, 0x12b8);
-    auto control  = speed < sv_stopspeed->GetFloat() ? sv_stopspeed->GetFloat() : speed;
+    auto control  = (speed < sv_stopspeed->GetFloat()) ? sv_stopspeed->GetFloat() : speed;
     auto drop     = control * friction * g_GlobalVars->interval_per_tick;
 
     if (speed > drop - 1.0f)
@@ -1646,7 +1753,9 @@ void FastStop()
         current_user_cmd->sidemove    = negated_direction.y;
     }
     else
+    {
         current_user_cmd->forwardmove = current_user_cmd->sidemove = 0.0f;
+    }
 }
 
 bool IsEntityVisiblePenetration(CachedEntity *entity, int hb)
@@ -1657,23 +1766,27 @@ bool IsEntityVisiblePenetration(CachedEntity *entity, int hb)
     int ret;
     bool correct_entity;
     IClientEntity *ent;
-    trace::filter_penetration.SetSelf(RAW_ENT(LOCAL_E));
+    trace::filter_penetration.SetSelf(RAW_ENT(g_pLocalPlayer->entity));
     trace::filter_penetration.Reset();
     ret = GetHitbox(entity, hb, hit);
     if (ret)
+    {
         return false;
-
+    }
     ray.Init(g_pLocalPlayer->v_Origin + g_pLocalPlayer->v_ViewOffset, hit);
     {
+        PROF_SECTION(IEVV_TraceRay);
         g_ITrace->TraceRay(ray, MASK_SHOT_HULL, &trace::filter_penetration, &trace_visible);
     }
     correct_entity = false;
     if (trace_visible.m_pEnt)
+    {
         correct_entity = ((IClientEntity *) trace_visible.m_pEnt) == RAW_ENT(entity);
-
+    }
     if (!correct_entity)
         return false;
     {
+        PROF_SECTION(IEVV_TraceRay);
         g_ITrace->TraceRay(ray, 0x4200400B, &trace::filter_default, &trace_visible);
     }
     if (trace_visible.m_pEnt)
@@ -1686,7 +1799,9 @@ bool IsEntityVisiblePenetration(CachedEntity *entity, int hb)
                 if (ent == RAW_ENT(entity))
                     return false;
                 if (trace_visible.hitbox >= 0)
+                {
                     return true;
+                }
             }
         }
     }
@@ -1697,16 +1812,21 @@ void ValidateUserCmd(CUserCmd *cmd, int sequence_nr)
 {
     CRC32_t crc = GetChecksum(cmd);
     if (crc != GetVerifiedCmds(g_IInput)[sequence_nr % VERIFIED_CMD_SIZE].m_crc)
+    {
         *cmd = GetVerifiedCmds(g_IInput)[sequence_nr % VERIFIED_CMD_SIZE].m_cmd;
+    }
 }
 
 // Used for getting class names
 CatCommand print_classnames("debug_print_classnames", "Lists classnames currently available in console",
                             []()
                             {
+                                // Create a tmp ent for the loop
+
                                 // Go through all the entities
-                                for (const auto &ent : entity_cache::valid_ents)
+                                for (auto const &ent : entity_cache::valid_ents)
                                 {
+
                                     // Print in console, the class name of the ent
                                     logging::Info(format(RAW_ENT(ent)->GetClientClass()->m_pNetworkName).c_str());
                                 }
@@ -1715,7 +1835,7 @@ CatCommand print_classnames("debug_print_classnames", "Lists classnames currentl
 void PrintChat(const char *fmt, ...)
 {
 #if ENABLE_VISUALS
-    auto *chat = (CHudBaseChat *) g_CHUD->FindElement("CHudChat");
+    CHudBaseChat *chat = (CHudBaseChat *) g_CHUD->FindElement("CHudChat");
     if (chat)
     {
         std::unique_ptr<char[]> buf(new char[1024]);
@@ -1723,7 +1843,7 @@ void PrintChat(const char *fmt, ...)
         va_start(list, fmt);
         vsprintf(buf.get(), fmt, list);
         va_end(list);
-        std::unique_ptr<char[]> str = std::move(strfmt("\x07%06X[COWHOOK]\x01 %s", 0x1434a4, buf.get()));
+        std::unique_ptr<char[]> str = std::move(strfmt("\x07%06X[\x07%06XCAT\x07%06X]\x01 %s", 0x5e3252, 0xba3d9a, 0x5e3252, buf.get()));
         // FIXME DEBUG LOG
         logging::Info("%s", str.get());
         chat->Printf(str.get());
@@ -1744,62 +1864,40 @@ Vector getShootPos(Vector angle)
     std::optional<Vector> vecOffset(0.0f);
     switch (LOCAL_W->m_iClassID())
     {
-    case CL_CLASS(CTFRocketLauncher_DirectHit):
-    case CL_CLASS(CTFRocketLauncher_AirStrike):
+    // Rocket launchers and flare guns/Pomson
     case CL_CLASS(CTFRocketLauncher):
+    case CL_CLASS(CTFRocketLauncher_Mortar):
+    case CL_CLASS(CTFRocketLauncher_AirStrike):
+    case CL_CLASS(CTFRocketLauncher_DirectHit):
     case CL_CLASS(CTFFlareGun):
-    case CL_CLASS(CTFFlareGun_Revenge):                          // Detonator
-        vecOffset = Vector(23.5f, 12.0f, -3.0f);
-        if (CE_INT(LOCAL_W, netvar.iItemDefinitionIndex) == 513) // The Original
-            vecOffset->y = 0.0f;
-        if (CE_INT(LOCAL_W, netvar.iItemDefinitionIndex) != 513 && CE_INT(LOCAL_E, netvar.iFlags) & FL_DUCKING)
-            vecOffset->z = 8.0f;
-        break;
-    case CL_CLASS(CTFParticleCannon): // Cow Mangler 5000
+    case CL_CLASS(CTFFlareGun_Revenge):
     case CL_CLASS(CTFDRGPomson):
-    case CL_CLASS(CTFRaygun):         // Righteous Bison
-    case CL_CLASS(CTFCompoundBow):
-    case CL_CLASS(CTFCrossbow):
-    case CL_CLASS(CTFShotgunBuildingRescue):
-    case CL_CLASS(CTFGrapplingHook):
-        vecOffset = Vector(23.5f, 8.0f, -3.0f);
-        switch (LOCAL_W->m_iClassID())
+        // The original shoots centered, rest doesn't
+        if (CE_INT(LOCAL_W, netvar.iItemDefinitionIndex) != 513)
         {
-        case CL_CLASS(CTFParticleCannon): // Cow Mangler 5000
-        case CL_CLASS(CTFRaygun):         // Righteous Bison
+            vecOffset = Vector(23.5f, 12.0f, -3.0f);
+            // Ducking changes offset
             if (CE_INT(LOCAL_E, netvar.iFlags) & FL_DUCKING)
                 vecOffset->z = 8.0f;
-            break;
-        case CL_CLASS(CTFCompoundBow):
-            vecOffset->y = -4.0f;
-            [[fallthrough]];
-        default:
-            break;
         }
         break;
-    case CL_CLASS(CTFCannon):
-    case CL_CLASS(CTFGrenadeLauncher):
+
+    // Pill/Pipebomb launchers
     case CL_CLASS(CTFPipebombLauncher):
-    case CL_CLASS(CTFJarMilk):
-    case CL_CLASS(CTFJar):
-    case CL_CLASS(CTFJarGas):
+    case CL_CLASS(CTFGrenadeLauncher):
+    case CL_CLASS(CTFCannon):
         vecOffset = Vector(16.0f, 8.0f, -6.0f);
         break;
-    case CL_CLASS(CTFBat_Giftwrap):
-    case CL_CLASS(CTFBat_Wood):
-    case CL_CLASS(CTFCleaver):
-        vecOffset = Vector(32.0f, 0.0f, -15.0f);
-        break;
+
     case CL_CLASS(CTFSyringeGun):
         vecOffset = Vector(16.0f, 6.0f, -8.0f);
         break;
-    case CL_CLASS(CTFFlameThrower):
-    case CL_CLASS(CTFWeaponFlameBall):
-        vecOffset = Vector(0.0f, 12.0f, 0.0f);
+
+    // Huntsman
+    case CL_CLASS(CTFCompoundBow):
+        vecOffset = Vector(23.5f, -8.0f, -3.0f);
         break;
-    case CL_CLASS(CTFLunchBox):
-        vecOffset = Vector(0.0f, 0.0f, -8.0f);
-        [[fallthrough]];
+
     default:
         break;
     }
@@ -1811,23 +1909,23 @@ Vector getShootPos(Vector angle)
         // Game checks 2000 HU infront of eye for a hit
         static const float distance = 2000.0f;
 
-        Vector endpos = eye + forward * distance;
+        Vector endpos = eye + (forward * distance);
 
         trace_t tr;
         Ray_t ray;
 
-        trace::filter_default.SetSelf(RAW_ENT(LOCAL_E));
+        trace::filter_default.SetSelf(RAW_ENT(g_pLocalPlayer->entity));
         ray.Init(eye, endpos);
-        if (!*tcm || g_Settings.is_create_move)
+        if (!tcm || g_Settings.is_create_move)
             g_ITrace->TraceRay(ray, MASK_SOLID, &trace::filter_default, &tr);
 
         // Replicate game behaviour, only use the offset if our trace has a big enough fraction
-        if (tr.fraction <= 0.1f)
+        if (tr.fraction <= 0.1)
         {
             // Flipped viewmodels flip the y
             if (re::C_TFWeaponBase::IsViewModelFlipped(RAW_ENT(LOCAL_W)))
                 vecOffset->y *= -1.0f;
-            eye = eye + forward * vecOffset->x + right * vecOffset->y + up * vecOffset->z;
+            eye = eye + (forward * vecOffset->x) + (right * vecOffset->y) + (up * vecOffset->z);
             // They decided to do this weird stuff for the pomson instead of fixing their offset
             if (LOCAL_W->m_iClassID() == CL_CLASS(CTFDRGPomson))
                 eye.z -= 13.0f;
@@ -1850,6 +1948,22 @@ std::unique_ptr<char[]> strfmt(const char *fmt, ...)
     return buf;
 }
 
+void ChangeName(std::string name)
+{
+    auto custom_name = settings::Manager::instance().lookup("name.custom");
+    if (custom_name != nullptr)
+        custom_name->fromString(name);
+
+    ReplaceSpecials(name);
+    NET_SetConVar setname("name", name.c_str());
+    INetChannel *ch = (INetChannel *) g_IEngine->GetNetChannelInfo();
+    if (ch)
+    {
+        setname.SetNetChannel(ch);
+        setname.SetReliable(false);
+        ch->SendNetMsg(setname, false);
+    }
+}
 const char *powerups[] = { "Strength", "Resistance", "Vampire", "Reflect", "Haste", "Regeneration", "Precision", "Agility", "Knockout", "King", "Plague", "Supernova", "Revenge" };
 
 const std::string classes[] = { "Scout", "Sniper", "Soldier", "Demoman", "Medic", "Heavy", "Pyro", "Spy", "Engineer" };
@@ -1867,7 +1981,7 @@ static int SeedFileLineHash(int seedvalue, const char *sharedname, int additiona
 
     CRC32_Final(&retval);
 
-    return (int) retval;
+    return (int) (retval);
 }
 
 int SharedRandomInt(unsigned iseed, const char *sharedname, int iMinVal, int iMaxVal, int additionalSeed /*=0*/)
@@ -1879,14 +1993,15 @@ int SharedRandomInt(unsigned iseed, const char *sharedname, int iMinVal, int iMa
 
 int GetPlayerForUserID(int userID)
 {
-    for (const auto &ent : entity_cache::player_cache)
+    for (auto const &ent : entity_cache::player_cache)
     {
-        player_info_s player_info{};
-        if (!GetPlayerInfo(ent->m_IDX, &player_info))
+        player_info_s player_info;
+        int i = ent->m_IDX;
+        if (!GetPlayerInfo(i, &player_info))
             continue;
         // Found player
         if (player_info.userID == userID)
-            return ent->m_IDX;
+            return i;
     }
     return 0;
 }
@@ -1902,12 +2017,12 @@ bool HookNetvar(std::vector<std::string> path, ProxyFnHook &hook, RecvVarProxyFn
         if (!strcmp(pClass->m_pRecvTable->m_pNetTableName, path[0].c_str()))
         {
             RecvTable *curr_table = pClass->m_pRecvTable;
-            for (size_t i = 1; i < path.size(); ++i)
+            for (size_t i = 1; i < path.size(); i++)
             {
                 bool found = false;
-                for (int j = 0; j < curr_table->m_nProps; ++j)
+                for (int j = 0; j < curr_table->m_nProps; j++)
                 {
-                    auto *pProp = (RecvPropRedef *) &(curr_table->m_pProps[j]);
+                    RecvPropRedef *pProp = (RecvPropRedef *) &(curr_table->m_pProps[j]);
                     if (!pProp)
                         continue;
                     if (!strcmp(path[i].c_str(), pProp->m_pVarName))
@@ -1937,4 +2052,14 @@ bool HookNetvar(std::vector<std::string> path, ProxyFnHook &hook, RecvVarProxyFn
         pClass = pClass->m_pNext;
     }
     return false;
+}
+
+static bool is_truce_active = false;
+bool isTruce()
+{
+    return is_truce_active;
+}
+void setTruce(bool status)
+{
+    is_truce_active = status;
 }

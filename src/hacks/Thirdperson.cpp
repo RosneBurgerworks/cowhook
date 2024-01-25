@@ -1,3 +1,7 @@
+/*
+  Created on 29.07.18.
+*/
+
 #include <hacks/Thirdperson.hpp>
 #include <settings/Bool.hpp>
 #include <localplayer.hpp>
@@ -5,9 +9,8 @@
 #include <core/sdk.hpp>
 #include "AntiAntiAim.hpp"
 
-namespace hacks::thirdperson
+namespace hacks::tf::thirdperson
 {
-
 static settings::Boolean enable{ "visual.thirdperson.enable", "false" };
 static settings::Button thirdperson_key{ "visual.thirdperson-button", "<null>" };
 static settings::Boolean real_angles{ "visual.thirdperson.real-angles", "false" };
@@ -67,5 +70,4 @@ void frameStageNotify()
         CE_FLOAT(LOCAL_E, netvar.deadflag + 8) = g_pLocalPlayer->realAngles.y;
     }
 }
-
-} // namespace hacks::thirdperson
+} // namespace hacks::tf::thirdperson

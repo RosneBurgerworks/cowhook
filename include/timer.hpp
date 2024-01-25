@@ -3,27 +3,24 @@
  *
  *  Created on: Jul 29, 2017
  *      Author: nullifiedcat
- *      Recoded by OneTF2
  */
 
-#pragma once
-
-#include "platform.h"
+#ifndef CH_TIMER_HPP
+#define CH_TIMER_HPP
+#include <chrono>
 
 class Timer
 {
-private:
-    int last{};
-
 public:
-    constexpr Timer() noexcept = default;
+    typedef std::chrono::system_clock clock;
+    std::chrono::time_point<clock> last{};
+    inline Timer(){};
 
-    inline bool check(unsigned int ms) const noexcept
+    inline bool check(unsigned ms) const
     {
-        return Plat_MSTime() - last >= ms;
+        return std::chrono::duration_cast<std::chrono::milliseconds>(clock::now() - last).count() >= ms;
     }
-
-    bool test_and_set(unsigned int ms) noexcept
+    inline bool test_and_set(unsigned ms)
     {
         if (check(ms))
         {
@@ -32,24 +29,9 @@ public:
         }
         return false;
     }
-
-    inline void update() noexcept
+    inline void update()
     {
-        last = static_cast<int>(Plat_MSTime());
-    }
-
-    static inline unsigned int sec_to_ms(unsigned int sec)
-    {
-        return sec * 1000;
-    }
-
-    inline void operator-=(unsigned int ms)
-    {
-        last -= static_cast<int>(ms);
-    }
-
-    inline void operator+=(unsigned int ms)
-    {
-        last += static_cast<int>(ms);
+        last = clock::now();
     }
 };
+#endif

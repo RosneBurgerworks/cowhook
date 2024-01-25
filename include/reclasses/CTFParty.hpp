@@ -11,6 +11,7 @@
 
 namespace re
 {
+
 class CTFParty
 {
 public:

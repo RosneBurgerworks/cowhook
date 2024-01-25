@@ -3,10 +3,12 @@
     NON-CONSTEXPR HEADER FOR tf2
 */
 
-#pragma once
+#ifndef tf2_AUTOGEN_HPP
+#define tf2_AUTOGEN_HPP
 
 namespace client_classes
 {
+
 class tf2
 {
 public:
@@ -407,3 +409,5 @@ public:
 
 extern tf2 tf2_list;
 } // namespace client_classes
+
+#endif /* tf2_AUTOGEN_HPP */

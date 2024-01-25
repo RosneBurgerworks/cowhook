@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include <cstdint>
+#include <stdint.h>
 #include <exception>
 
 enum class platform
@@ -203,10 +203,6 @@ struct offsets
     static constexpr uint32_t ServerCmdKeyValues()
     {
         return PlatformOffset(128, undefined, undefined);
-    }
-    static constexpr uint32_t ClientCmd_Unrestricted()
-    {
-        return PlatformOffset(106, undefined, undefined);
     }
     static constexpr uint32_t EmitSound1()
     {

@@ -4,6 +4,7 @@
 
 namespace re
 {
+
 class C_BasePlayer : public C_BaseEntity
 {
 public:
@@ -28,9 +29,9 @@ public:
     }
     inline static IClientEntity *GetEquippedDemoShield(IClientEntity *self)
     {
-        static auto signature = e8call_direct(CSignature::GetClientSignature("E8 ? ? ? ? 8B 55 ? 85 C0 0F 84 ? ? ? ? 89 5C 24"));
+        static auto signature = e8call_direct(gSignatures.GetClientSignature("E8 ? ? ? ? 8B 55 ? 85 C0 0F 84 ? ? ? ? 89 5C 24"));
         typedef IClientEntity *(*GetEquippedDemoShield_t)(IClientEntity *);
-        static auto GetEquippedDemoShield_fn = GetEquippedDemoShield_t(signature);
+        static GetEquippedDemoShield_t GetEquippedDemoShield_fn = GetEquippedDemoShield_t(signature);
         return GetEquippedDemoShield_fn(self);
     }
 };
